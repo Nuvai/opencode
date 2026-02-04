@@ -114,7 +114,7 @@ export function createDialogProviderOptions() {
     )
 
     // Sort to ensure Recent category appears first
-    return allProviders.sort((a, b) => {
+    return (allProviders ?? []).sort((a, b) => {
       if (a.category === "Recent" && b.category !== "Recent") return -1
       if (a.category !== "Recent" && b.category === "Recent") return 1
       return 0

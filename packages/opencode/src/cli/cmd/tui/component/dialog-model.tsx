@@ -112,7 +112,7 @@ export function DialogModel(props: { providerID?: string }) {
       : []
 
     const providerOptions = pipe(
-      sync.data.provider,
+      sync.data.provider ?? [],
       sortBy(
         (provider) => provider.id !== "opencode",
         (provider) => provider.name,
@@ -174,7 +174,7 @@ export function DialogModel(props: { providerID?: string }) {
 
     const popularProviders = !connected()
       ? pipe(
-          providers(),
+          providers() ?? [],
           map((option) => {
             return {
               ...option,
@@ -187,12 +187,12 @@ export function DialogModel(props: { providerID?: string }) {
 
     // Search shows a single merged list (favorites inline)
     if (needle) {
-      const filteredProviders = fuzzysort.go(needle, providerOptions, { keys: ["title", "category"] }).map((x) => x.obj)
-      const filteredPopular = fuzzysort.go(needle, popularProviders, { keys: ["title"] }).map((x) => x.obj)
+      const filteredProviders = fuzzysort.go(needle, providerOptions ?? [], { keys: ["title", "category"] }).map((x) => x.obj)
+      const filteredPopular = fuzzysort.go(needle, popularProviders ?? [], { keys: ["title"] }).map((x) => x.obj)
       return [...filteredProviders, ...filteredPopular]
     }
 
-    return [...favoriteOptions, ...recentOptions, ...providerOptions, ...popularProviders]
+    return [...(favoriteOptions ?? []), ...(recentOptions ?? []), ...(providerOptions ?? []), ...(popularProviders ?? [])]
   })
 
   const provider = createMemo(() =>
