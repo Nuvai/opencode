@@ -111,12 +111,14 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           modelID: string
         }[]
         variant: Record<string, string | undefined>
+        recentProviders: string[]
       }>({
         ready: false,
         model: {},
         recent: [],
         favorite: [],
         variant: {},
+        recentProviders: [],
       })
 
       const file = Bun.file(path.join(Global.Path.state, "model.json"))
@@ -136,6 +138,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             recent: modelStore.recent,
             favorite: modelStore.favorite,
             variant: modelStore.variant,
+            recentProviders: modelStore.recentProviders,
           }),
         )
       }
@@ -146,6 +149,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           if (Array.isArray(x.recent)) setModelStore("recent", x.recent)
           if (Array.isArray(x.favorite)) setModelStore("favorite", x.favorite)
           if (typeof x.variant === "object" && x.variant !== null) setModelStore("variant", x.variant)
+          if (Array.isArray(x.recentProviders)) setModelStore("recentProviders", x.recentProviders)
         })
         .catch(() => {})
         .finally(() => {
@@ -399,10 +403,23 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       }
     })
 
+    const provider = {
+      recent() {
+        return modelStore.recentProviders
+      },
+      addRecent(providerID: string) {
+        const uniq = uniqueBy([providerID, ...modelStore.recentProviders], (x) => x)
+        if (uniq.length > 10) uniq.pop()
+        setModelStore("recentProviders", uniq)
+        save()
+      },
+    }
+
     const result = {
       model,
       agent,
       mcp,
+      provider,
     }
     return result
   },

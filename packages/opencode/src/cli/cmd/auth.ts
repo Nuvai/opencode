@@ -358,6 +358,20 @@ export const AuthLoginCommand = cmd({
           )
         }
 
+        if (provider === "azure" || provider === "azure-cognitive-services") {
+          prompts.log.info(
+            "Azure OpenAI requires a resource name to construct the endpoint URL.\n" +
+              "You can find this in the Azure portal under your Azure OpenAI resource.",
+          )
+        }
+
+        if (provider === "litellm") {
+          prompts.log.info(
+            "LiteLLM is a proxy that provides a unified API for multiple LLM providers.\n" +
+              "You'll be asked for the API key and proxy URL after this step.",
+          )
+        }
+
         const key = await prompts.password({
           message: "Enter your API key",
           validate: (x) => (x && x.length > 0 ? undefined : "Required"),
@@ -367,6 +381,64 @@ export const AuthLoginCommand = cmd({
           type: "api",
           key,
         })
+
+        // Handle Azure resource name configuration
+        if (provider === "azure" || provider === "azure-cognitive-services") {
+          const resourceName = await prompts.text({
+            message: "Enter your Azure resource name (e.g., my-openai-resource)",
+            placeholder: "my-openai-resource",
+            validate: (x) => (x && x.length > 0 ? undefined : "Required"),
+          })
+          if (prompts.isCancel(resourceName)) throw new UI.CancelledError()
+
+          const baseURL =
+            provider === "azure-cognitive-services"
+              ? `https://${resourceName}.cognitiveservices.azure.com/openai`
+              : `https://${resourceName}.openai.azure.com`
+
+          await Config.updateGlobal({
+            provider: {
+              [provider]: {
+                options: {
+                  baseURL,
+                },
+              },
+            },
+          })
+          prompts.log.success(`Configured baseURL: ${baseURL}`)
+        }
+
+        // Handle LiteLLM base URL configuration
+        if (provider === "litellm") {
+          const baseURL = await prompts.text({
+            message: "Enter your LiteLLM proxy URL",
+            placeholder: "http://localhost:4000",
+            defaultValue: "http://localhost:4000",
+            validate: (x) => {
+              if (!x || x.length === 0) return undefined // Allow empty for default
+              try {
+                new URL(x)
+                return undefined
+              } catch {
+                return "Please enter a valid URL"
+              }
+            },
+          })
+          if (prompts.isCancel(baseURL)) throw new UI.CancelledError()
+
+          if (baseURL && baseURL !== "http://localhost:4000") {
+            await Config.updateGlobal({
+              provider: {
+                litellm: {
+                  options: {
+                    baseURL: `${baseURL}/v1`,
+                  },
+                },
+              },
+            })
+            prompts.log.success(`Configured baseURL: ${baseURL}/v1`)
+          }
+        }
 
         prompts.outro("Done")
       },

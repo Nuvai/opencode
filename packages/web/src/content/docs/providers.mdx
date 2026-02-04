@@ -1034,6 +1034,121 @@ See the [Helicone Header Directory](https://docs.helicone.ai/helicone-headers/he
 
 ---
 
+### LiteLLM
+
+[LiteLLM](https://litellm.ai/) is an OpenAI-compatible proxy that lets you access 100+ LLM providers through a unified API. OpenCode auto-detects running LiteLLM servers and dynamically discovers available models.
+
+#### Local Proxy (No Auth)
+
+For a local LiteLLM proxy running on the default port, OpenCode will automatically detect it:
+
+```bash
+# Start LiteLLM proxy
+litellm --model gpt-3.5-turbo
+
+# OpenCode will auto-detect the server
+opencode
+```
+
+Run `/models` to see the discovered models.
+
+#### Environment Variables
+
+You can configure LiteLLM using environment variables:
+
+```bash
+# Custom URL (default: http://localhost:4000)
+LITELLM_BASE_URL=http://localhost:8000 opencode
+
+# With API key for authenticated proxies
+LITELLM_API_KEY=sk-xxx LITELLM_BASE_URL=https://litellm.example.com opencode
+```
+
+Or add them to your bash profile:
+
+```bash title="~/.bash_profile"
+export LITELLM_BASE_URL=http://localhost:4000
+export LITELLM_API_KEY=sk-xxx  # Optional for local proxies
+```
+
+#### Using /connect
+
+For remote LiteLLM proxies that require authentication:
+
+1. Run the `/connect` command and search for **LiteLLM**.
+
+   ```txt
+   /connect
+   ```
+
+2. Enter your LiteLLM API key.
+
+   ```txt
+   ┌ API key
+   │
+   │
+   └ enter
+   ```
+
+3. Set the base URL if not using the default:
+
+   ```bash
+   LITELLM_BASE_URL=https://litellm.example.com opencode
+   ```
+
+4. Run `/models` to see available models.
+
+   ```txt
+   /models
+   ```
+
+#### Configuration File
+
+For persistent configuration or custom models:
+
+```json title="opencode.json"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "litellm": {
+      "options": {
+        "baseURL": "http://localhost:4000"
+      }
+    }
+  }
+}
+```
+
+You can also define custom models if auto-discovery doesn't work:
+
+```json title="opencode.json"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "litellm": {
+      "options": {
+        "baseURL": "http://localhost:4000"
+      },
+      "models": {
+        "anthropic/claude-3-opus": {
+          "name": "Claude 3 Opus (via LiteLLM)",
+          "limit": {
+            "context": 200000,
+            "output": 4096
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+:::tip
+LiteLLM models are auto-detected from the `/v1/models` endpoint. Custom models in your config will be merged with discovered models.
+:::
+
+---
+
 ### llama.cpp
 
 You can configure opencode to use local models through [llama.cpp's](https://github.com/ggml-org/llama.cpp) llama-server utility

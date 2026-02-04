@@ -125,7 +125,7 @@ export namespace Provider {
       return {
         autoload: false,
         async getModel(sdk: any, modelID: string, _options?: Record<string, any>) {
-          return sdk.responses(modelID)
+          return sdk.responses ? sdk.responses(modelID) : sdk.languageModel(modelID)
         },
         options: {},
       }
@@ -157,7 +157,7 @@ export namespace Provider {
           if (options?.["useCompletionUrls"]) {
             return sdk.chat(modelID)
           } else {
-            return sdk.responses(modelID)
+            return sdk.responses ? sdk.responses(modelID) : sdk.languageModel(modelID)
           }
         },
         options: {},
@@ -171,7 +171,7 @@ export namespace Provider {
           if (options?.["useCompletionUrls"]) {
             return sdk.chat(modelID)
           } else {
-            return sdk.responses(modelID)
+            return sdk.responses ? sdk.responses(modelID) : sdk.languageModel(modelID)
           }
         },
         options: {
@@ -475,7 +475,7 @@ export namespace Provider {
       if (!apiToken) {
         throw new Error(
           "CLOUDFLARE_API_TOKEN (or CF_AIG_TOKEN) is required for Cloudflare AI Gateway. " +
-            "Set it via environment variable or run `opencode auth cloudflare-ai-gateway`.",
+          "Set it via environment variable or run `opencode auth cloudflare-ai-gateway`.",
         )
       }
 
@@ -502,6 +502,92 @@ export namespace Provider {
           headers: {
             "X-Cerebras-3rd-Party-Integration": "opencode",
           },
+        },
+      }
+    },
+    litellm: async (input) => {
+      const config = await Config.get()
+      const providerConfig = config.provider?.["litellm"]
+
+      // Base URL: config > env > default (localhost:4000)
+      const baseURL =
+        providerConfig?.options?.baseURL ?? Env.get("LITELLM_BASE_URL") ?? "http://localhost:4000"
+
+      // API key: auth > config > env (optional for local proxies)
+      const auth = await Auth.get("litellm")
+      const apiKey = await (async () => {
+        if (auth?.type === "api") return auth.key
+        if (providerConfig?.options?.apiKey) return providerConfig.options.apiKey
+        return Env.get("LITELLM_API_KEY")
+      })()
+
+      // Check if server is available (5 second timeout)
+      const isAvailable = await (async () => {
+        try {
+          const controller = new AbortController()
+          const timeout = setTimeout(() => controller.abort(), 5000)
+          const response = await fetch(`${baseURL}/health`, {
+            signal: controller.signal,
+            headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
+          }).catch(() => null)
+          clearTimeout(timeout)
+          return response?.ok ?? false
+        } catch {
+          return false
+        }
+      })()
+
+      // Only autoload if server is available OR explicitly configured
+      if (!isAvailable && !providerConfig) return { autoload: false }
+
+      // Fetch models dynamically if server is available and no models configured
+      if (isAvailable && Object.keys(input.models).length === 0) {
+        try {
+          const response = await fetch(`${baseURL}/v1/models`, {
+            headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
+          })
+          if (response.ok) {
+            const data = (await response.json()) as { data: Array<{ id: string; owned_by?: string }> }
+            for (const model of data.data ?? []) {
+              input.models[model.id] = {
+                id: model.id,
+                providerID: "litellm",
+                name: model.id,
+                api: {
+                  id: model.id,
+                  url: `${baseURL}/v1`,
+                  npm: "@ai-sdk/openai-compatible",
+                },
+                status: "active",
+                headers: {},
+                options: {},
+                cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
+                limit: { context: 128000, output: 16384 },
+                capabilities: {
+                  temperature: true,
+                  reasoning: false,
+                  attachment: false,
+                  toolcall: true,
+                  input: { text: true, audio: false, image: false, video: false, pdf: false },
+                  output: { text: true, audio: false, image: false, video: false, pdf: false },
+                  interleaved: false,
+                },
+                release_date: "",
+                variants: {},
+              }
+            }
+          }
+        } catch {
+          // Silently ignore model discovery failures
+        }
+      }
+
+      return {
+        autoload: isAvailable || !!providerConfig,
+        options: {
+          baseURL: `${baseURL}/v1`,
+          ...(apiKey ? { apiKey } : {}),
+          includeUsage: true,
         },
       }
     },
@@ -616,13 +702,13 @@ export namespace Provider {
         },
         experimentalOver200K: model.cost?.context_over_200k
           ? {
-              cache: {
-                read: model.cost.context_over_200k.cache_read ?? 0,
-                write: model.cost.context_over_200k.cache_write ?? 0,
-              },
-              input: model.cost.context_over_200k.input,
-              output: model.cost.context_over_200k.output,
-            }
+            cache: {
+              read: model.cost.context_over_200k.cache_read ?? 0,
+              write: model.cost.context_over_200k.cache_write ?? 0,
+            },
+            input: model.cost.context_over_200k.input,
+            output: model.cost.context_over_200k.output,
+          }
           : undefined,
       },
       limit: {
@@ -708,6 +794,19 @@ export namespace Provider {
           ...model,
           providerID: "github-copilot-enterprise",
         })),
+      }
+    }
+
+    // Add LiteLLM provider for dynamic model discovery
+    // This enables the custom loader to run even if litellm isn't in models.dev
+    if (!database["litellm"]) {
+      database["litellm"] = {
+        id: "litellm",
+        name: "LiteLLM",
+        source: "custom",
+        env: ["LITELLM_API_KEY"],
+        options: {},
+        models: {},
       }
     }
 

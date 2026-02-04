@@ -7,12 +7,13 @@ import { useSDK } from "../context/sdk"
 import { DialogPrompt } from "../ui/dialog-prompt"
 import { Link } from "../ui/link"
 import { useTheme } from "../context/theme"
-import { TextAttributes } from "@opentui/core"
+import { TextAttributes, TextareaRenderable } from "@opentui/core"
 import type { ProviderAuthAuthorization } from "@opencode-ai/sdk/v2"
 import { DialogModel } from "./dialog-model"
 import { useKeyboard } from "@opentui/solid"
 import { Clipboard } from "@tui/util/clipboard"
 import { useToast } from "../ui/toast"
+import { useLocal } from "@tui/context/local"
 
 const PROVIDER_PRIORITY: Record<string, number> = {
   opencode: 0,
@@ -26,13 +27,18 @@ export function createDialogProviderOptions() {
   const sync = useSync()
   const dialog = useDialog()
   const sdk = useSDK()
+  const local = useLocal()
   const connected = createMemo(() => new Set(sync.data.provider_next.connected))
+  const recentProviders = createMemo(() => local.provider?.recent?.() ?? [])
+
   const options = createMemo(() => {
-    return pipe(
+    const recents = recentProviders()
+    const allProviders = pipe(
       sync.data.provider_next.all,
       sortBy((x) => PROVIDER_PRIORITY[x.id] ?? 99),
       map((provider) => {
         const isConnected = connected().has(provider.id)
+        const isRecent = recents.includes(provider.id)
         return {
           title: provider.name,
           value: provider.id,
@@ -41,9 +47,10 @@ export function createDialogProviderOptions() {
             anthropic: "(Claude Max or API key)",
             openai: "(ChatGPT Plus/Pro or API key)",
           }[provider.id],
-          category: provider.id in PROVIDER_PRIORITY ? "Popular" : "Other",
+          category: isRecent ? "Recent" : (provider.id in PROVIDER_PRIORITY ? "Popular" : "Other"),
           footer: isConnected ? "Connected" : undefined,
           async onSelect() {
+            local.provider?.addRecent?.(provider.id)
             const methods = sync.data.provider_auth[provider.id] ?? [
               {
                 type: "api",
@@ -103,6 +110,13 @@ export function createDialogProviderOptions() {
         }
       }),
     )
+
+    // Sort to ensure Recent category appears first
+    return allProviders.sort((a, b) => {
+      if (a.category === "Recent" && b.category !== "Recent") return -1
+      if (a.category !== "Recent" && b.category === "Recent") return 1
+      return 0
+    })
   })
   return options
 }
@@ -222,6 +236,18 @@ function ApiMethod(props: ApiMethodProps) {
   const sync = useSync()
   const { theme } = useTheme()
 
+  const isAzure = props.providerID === "azure" || props.providerID === "azure-cognitive-services" || props.providerID === "azure-anthropic"
+  const isLitellm = props.providerID === "litellm"
+
+  // Use multi-field dialog for Azure and LiteLLM
+  if (isAzure) {
+    return <AzureApiMethod providerID={props.providerID} title={props.title} />
+  }
+
+  if (isLitellm) {
+    return <LitellmApiMethod providerID={props.providerID} title={props.title} />
+  }
+
   return (
     <DialogPrompt
       title={props.title}
@@ -247,10 +273,260 @@ function ApiMethod(props: ApiMethodProps) {
             key: value,
           },
         })
+
         await sdk.client.instance.dispose()
         await sync.bootstrap()
         dialog.replace(() => <DialogModel providerID={props.providerID} />)
       }}
     />
+  )
+}
+
+interface AzureApiMethodProps {
+  providerID: string
+  title: string
+}
+function AzureApiMethod(props: AzureApiMethodProps) {
+  const dialog = useDialog()
+  const sdk = useSDK()
+  const sync = useSync()
+  const { theme } = useTheme()
+
+  let apiKeyInput: TextareaRenderable
+  let resourceNameInput: TextareaRenderable
+  const [activeField, setActiveField] = createSignal<"apiKey" | "resourceName">("apiKey")
+
+  const handleSubmit = async () => {
+    const apiKey = apiKeyInput.plainText
+    const resourceName = resourceNameInput.plainText
+
+    if (!apiKey || !resourceName) return
+
+    await sdk.client.auth.set({
+      providerID: props.providerID,
+      auth: {
+        type: "api",
+        key: apiKey,
+      },
+    })
+
+    const baseURL =
+      props.providerID === "azure-cognitive-services"
+        ? `https://${resourceName}.cognitiveservices.azure.com/openai`
+        : props.providerID === "azure-anthropic"
+          ? `https://${resourceName}.openai.azure.com/anthropic/v1`
+          : `https://${resourceName}.openai.azure.com`
+
+    await sdk.client.global.config.update({
+      config: {
+        provider: {
+          [props.providerID]: {
+            options: {
+              baseURL,
+            },
+          },
+        },
+      },
+    })
+
+    await sdk.client.instance.dispose()
+    await sync.bootstrap()
+    dialog.replace(() => <DialogModel providerID={props.providerID} />)
+  }
+
+  useKeyboard((evt) => {
+    if (evt.name === "return") {
+      handleSubmit()
+    }
+    if (evt.name === "tab" && !evt.shift) {
+      if (activeField() === "apiKey") {
+        setActiveField("resourceName")
+        resourceNameInput?.focus()
+      }
+    }
+    if (evt.name === "tab" && evt.shift) {
+      if (activeField() === "resourceName") {
+        setActiveField("apiKey")
+        apiKeyInput?.focus()
+      }
+    }
+  })
+
+  onMount(() => {
+    dialog.setSize("medium")
+    setTimeout(() => {
+      if (!apiKeyInput || apiKeyInput.isDestroyed) return
+      apiKeyInput.focus()
+    }, 1)
+  })
+
+  return (
+    <box paddingLeft={2} paddingRight={2} gap={1}>
+      <box flexDirection="row" justifyContent="space-between">
+        <text attributes={TextAttributes.BOLD} fg={theme.text}>
+          {props.title}
+        </text>
+        <text fg={theme.textMuted}>esc</text>
+      </box>
+      <box gap={1}>
+        <text fg={theme.textMuted}>
+          {props.providerID === "azure-anthropic"
+            ? "Find your resource name in the Azure portal under your Azure OpenAI resource (for Anthropic models)."
+            : "Find your resource name in the Azure portal under your Azure OpenAI resource."}
+        </text>
+
+        <box gap={0}>
+          <text fg={activeField() === "apiKey" ? theme.text : theme.textMuted}>API Key</text>
+          <textarea
+            height={3}
+            ref={(val: TextareaRenderable) => (apiKeyInput = val)}
+            placeholder="Enter your API key"
+            textColor={theme.text}
+            focusedTextColor={theme.text}
+            cursorColor={theme.text}
+          />
+        </box>
+
+        <box gap={0}>
+          <text fg={activeField() === "resourceName" ? theme.text : theme.textMuted}>Resource Name</text>
+          <textarea
+            height={3}
+            ref={(val: TextareaRenderable) => (resourceNameInput = val)}
+            placeholder="my-openai-resource"
+            textColor={theme.text}
+            focusedTextColor={theme.text}
+            cursorColor={theme.text}
+          />
+        </box>
+      </box>
+      <box paddingBottom={1} gap={1} flexDirection="row">
+        <text fg={theme.text}>
+          enter <span style={{ fg: theme.textMuted }}>submit</span>
+        </text>
+        <text fg={theme.text}>
+          tab <span style={{ fg: theme.textMuted }}>next field</span>
+        </text>
+      </box>
+    </box>
+  )
+}
+
+interface LitellmApiMethodProps {
+  providerID: string
+  title: string
+}
+function LitellmApiMethod(props: LitellmApiMethodProps) {
+  const dialog = useDialog()
+  const sdk = useSDK()
+  const sync = useSync()
+  const { theme } = useTheme()
+
+  let apiKeyInput: TextareaRenderable
+  let baseUrlInput: TextareaRenderable
+  const [activeField, setActiveField] = createSignal<"apiKey" | "baseUrl">("apiKey")
+
+  const handleSubmit = async () => {
+    const apiKey = apiKeyInput.plainText
+    const baseUrl = baseUrlInput.plainText || "http://localhost:4000"
+
+    if (!apiKey) return
+
+    await sdk.client.auth.set({
+      providerID: props.providerID,
+      auth: {
+        type: "api",
+        key: apiKey,
+      },
+    })
+
+    await sdk.client.global.config.update({
+      config: {
+        provider: {
+          litellm: {
+            options: {
+              baseURL: `${baseUrl}/v1`,
+            },
+          },
+        },
+      },
+    })
+
+    await sdk.client.instance.dispose()
+    await sync.bootstrap()
+    dialog.replace(() => <DialogModel providerID={props.providerID} />)
+  }
+
+  useKeyboard((evt) => {
+    if (evt.name === "return") {
+      handleSubmit()
+    }
+    if (evt.name === "tab" && !evt.shift) {
+      if (activeField() === "apiKey") {
+        setActiveField("baseUrl")
+        baseUrlInput?.focus()
+      }
+    }
+    if (evt.name === "tab" && evt.shift) {
+      if (activeField() === "baseUrl") {
+        setActiveField("apiKey")
+        apiKeyInput?.focus()
+      }
+    }
+  })
+
+  onMount(() => {
+    dialog.setSize("medium")
+    setTimeout(() => {
+      if (!apiKeyInput || apiKeyInput.isDestroyed) return
+      apiKeyInput.focus()
+    }, 1)
+  })
+
+  return (
+    <box paddingLeft={2} paddingRight={2} gap={1}>
+      <box flexDirection="row" justifyContent="space-between">
+        <text attributes={TextAttributes.BOLD} fg={theme.text}>
+          {props.title}
+        </text>
+        <text fg={theme.textMuted}>esc</text>
+      </box>
+      <box gap={1}>
+        <text fg={theme.textMuted}>
+          LiteLLM is a proxy that provides a unified API for multiple LLM providers.
+        </text>
+
+        <box gap={0}>
+          <text fg={activeField() === "apiKey" ? theme.text : theme.textMuted}>API Key</text>
+          <textarea
+            height={3}
+            ref={(val: TextareaRenderable) => (apiKeyInput = val)}
+            placeholder="Enter your API key"
+            textColor={theme.text}
+            focusedTextColor={theme.text}
+            cursorColor={theme.text}
+          />
+        </box>
+
+        <box gap={0}>
+          <text fg={activeField() === "baseUrl" ? theme.text : theme.textMuted}>Proxy URL</text>
+          <textarea
+            height={3}
+            ref={(val: TextareaRenderable) => (baseUrlInput = val)}
+            placeholder="http://localhost:4000"
+            textColor={theme.text}
+            focusedTextColor={theme.text}
+            cursorColor={theme.text}
+          />
+        </box>
+      </box>
+      <box paddingBottom={1} gap={1} flexDirection="row">
+        <text fg={theme.text}>
+          enter <span style={{ fg: theme.textMuted }}>submit</span>
+        </text>
+        <text fg={theme.text}>
+          tab <span style={{ fg: theme.textMuted }}>next field</span>
+        </text>
+      </box>
+    </box>
   )
 }
