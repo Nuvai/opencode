@@ -33,8 +33,10 @@ export function createDialogProviderOptions() {
 
   const options = createMemo(() => {
     const recents = recentProviders()
+    const providers = sync.data.provider_next.all ?? []
+
     const allProviders = pipe(
-      sync.data.provider_next.all,
+      providers,
       sortBy((x) => PROVIDER_PRIORITY[x.id] ?? 99),
       map((provider) => {
         const isConnected = connected().has(provider.id)
