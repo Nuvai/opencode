@@ -15,13 +15,15 @@ Usage: install.sh [options]
 
 Options:
     -h, --help              Display this help message
-    -v, --version <version> Install a specific version (e.g., 1.0.180)
+    -v, --version <version> Install a specific version (e.g., 1.1.52)
     -b, --binary <path>     Install from a local binary instead of downloading
         --no-modify-path    Don't modify shell config files (.zshrc, .bashrc, etc.)
+        --uninstall         Uninstall OpenCode and remove from PATH
 
 Examples:
-    curl -fsSL https://opencode.ai/install | bash
-    curl -fsSL https://opencode.ai/install | bash -s -- --version 1.0.180
+    curl -fsSL https://raw.githubusercontent.com/Nuvai/opencode/dev/install | bash
+    curl -fsSL https://raw.githubusercontent.com/Nuvai/opencode/dev/install | bash -s -- --version 1.1.52
+    curl -fsSL https://raw.githubusercontent.com/Nuvai/opencode/dev/install | bash -s -- --uninstall
     ./install --binary /path/to/opencode
 EOF
 }
@@ -29,6 +31,7 @@ EOF
 requested_version=${VERSION:-}
 no_modify_path=false
 binary_path=""
+uninstall=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -56,6 +59,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --no-modify-path)
             no_modify_path=true
+            shift
+            ;;
+        --uninstall)
+            uninstall=true
             shift
             ;;
         *)
@@ -179,12 +186,61 @@ check_version() {
         installed_version=$(opencode --version 2>/dev/null || echo "")
 
         if [[ "$installed_version" != "$specific_version" ]]; then
-            print_message info "${MUTED}Installed version: ${NC}$installed_version."
+            print_message info "${MUTED}Installed version: ${NC}$installed_version${MUTED}, upgrading to ${NC}$specific_version"
         else
-            print_message info "${MUTED}Version ${NC}$specific_version${MUTED} already installed"
-            exit 0
+            print_message info "${MUTED}Version ${NC}$specific_version${MUTED} already installed, reinstalling..."
         fi
     fi
+}
+
+uninstall_opencode() {
+    print_message info "\n${MUTED}Uninstalling ${NC}opencode${MUTED}..."
+    
+    if [ -d "$INSTALL_DIR" ]; then
+        rm -rf "$INSTALL_DIR"
+        print_message info "${MUTED}Removed binary from ${NC}$INSTALL_DIR"
+    else
+        print_message info "${MUTED}Binary directory not found at ${NC}$INSTALL_DIR"
+    fi
+
+    # Remove from PATH in config files
+    XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
+    current_shell=$(basename "$SHELL")
+    case $current_shell in
+        fish)
+            config_files="$HOME/.config/fish/config.fish"
+        ;;
+        zsh)
+            config_files="${ZDOTDIR:-$HOME}/.zshrc ${ZDOTDIR:-$HOME}/.zshenv $XDG_CONFIG_HOME/zsh/.zshrc $XDG_CONFIG_HOME/zsh/.zshenv"
+        ;;
+        bash)
+            config_files="$HOME/.bashrc $HOME/.bash_profile $HOME/.profile $XDG_CONFIG_HOME/bash/.bashrc $XDG_CONFIG_HOME/bash/.bash_profile"
+        ;;
+        ash)
+            config_files="$HOME/.ashrc $HOME/.profile /etc/profile"
+        ;;
+        sh)
+            config_files="$HOME/.ashrc $HOME/.profile /etc/profile"
+        ;;
+        *)
+            config_files="$HOME/.bashrc $HOME/.bash_profile $XDG_CONFIG_HOME/bash/.bashrc $XDG_CONFIG_HOME/bash/.bash_profile"
+        ;;
+    esac
+
+    for file in $config_files; do
+        if [[ -f $file ]]; then
+            if grep -q "opencode" "$file"; then
+                # Use a temporary file for sed since in-place editing behaves differently across systems
+                sed '/# opencode/d; /export PATH=.*\.opencode\/bin/d; /fish_add_path.*\.opencode\/bin/d' "$file" > "$file.tmp"
+                mv "$file.tmp" "$file"
+                print_message info "${MUTED}Removed ${NC}opencode ${MUTED}from ${NC}$file"
+            fi
+        fi
+    done
+
+    echo -e ""
+    print_message info "${MUTED}OpenCode has been uninstalled successfully!${NC}"
+    exit 0
 }
 
 unbuffered_sed() {
@@ -303,6 +359,11 @@ install_from_binary() {
     cp "$binary_path" "${INSTALL_DIR}/opencode"
     chmod 755 "${INSTALL_DIR}/opencode"
 }
+
+# Handle uninstall first
+if [[ "$uninstall" == "true" ]]; then
+    uninstall_opencode
+fi
 
 if [ -n "$binary_path" ]; then
     install_from_binary
