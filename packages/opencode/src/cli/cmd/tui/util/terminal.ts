@@ -1,7 +1,61 @@
 import { RGBA } from "@opentui/core"
 import { Flag } from "@/flag/flag"
+import os from "os"
 
 export namespace Terminal {
+  /**
+   * Detects if terminal color queries should be skipped.
+   *
+   * OSC 10/11 escape sequences can cause issues on certain macOS versions
+   * and terminal emulators where responses leak into the input buffer
+   * instead of being handled silently.
+   *
+   * Known affected configurations:
+   * - macOS Tahoe (26.x / Darwin 25.x) - affects multiple terminals
+   * - macOS Sequoia (15.x / Darwin 24.x) - some terminal issues reported
+   *
+   * @see https://github.com/anthropics/claude-code/issues/12910
+   */
+  export function shouldSkipTerminalQueries(): boolean {
+    // Explicit disable flag takes precedence (always skip)
+    if (Flag.OPENCODE_DISABLE_TERMINAL_QUERIES) return true
+
+    // Force enable flag overrides auto-detection (for testing)
+    if (Flag.OPENCODE_FORCE_TERMINAL_QUERIES) return false
+
+    // Check if on macOS
+    if (process.platform !== "darwin") return false
+
+    // Get Darwin kernel version (maps to macOS version)
+    // Darwin 25.x = macOS 26.x (Tahoe) - released Sep 2025
+    // Darwin 24.x = macOS 15.x (Sequoia) - released Sep 2024
+    // Darwin 23.x = macOS 14.x (Sonoma) - released Sep 2023
+    // Darwin 22.x = macOS 13.x (Ventura) - released Oct 2022
+    const release = os.release()
+    const majorVersion = parseInt(release.split(".")[0], 10)
+
+    // Skip on macOS Tahoe (Darwin 25.x) due to known OSC response issues
+    // affecting Terminal.app, Ghostty, Cursor terminal
+    // See: https://github.com/anthropics/claude-code/issues/12910
+    if (majorVersion >= 25) {
+      return true
+    }
+
+    // Check for specific terminal emulators with known issues
+    const termProgram = process.env.TERM_PROGRAM?.toLowerCase() || ""
+
+    // Ghostty has been reported to have OSC response issues on Sequoia
+    if (termProgram.includes("ghostty") && majorVersion >= 24) {
+      return true
+    }
+
+    // Cursor integrated terminal has issues on recent macOS
+    if (termProgram.includes("cursor") && majorVersion >= 24) {
+      return true
+    }
+
+    return false
+  }
   export type Colors = Awaited<ReturnType<typeof colors>>
   /**
    * Query terminal colors including background, foreground, and palette (0-15).
@@ -20,8 +74,8 @@ export namespace Terminal {
   }> {
     if (!process.stdin.isTTY) return { background: null, foreground: null, colors: [] }
 
-    // Skip terminal queries if disabled (for terminals that don't handle OSC sequences properly)
-    if (Flag.OPENCODE_DISABLE_TERMINAL_QUERIES) return { background: null, foreground: null, colors: [] }
+    // Skip terminal queries if disabled or on problematic configurations
+    if (shouldSkipTerminalQueries()) return { background: null, foreground: null, colors: [] }
 
     return new Promise((resolve) => {
       let background: RGBA | null = null

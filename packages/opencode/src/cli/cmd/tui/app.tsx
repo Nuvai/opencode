@@ -36,13 +36,15 @@ import { ArgsProvider, useArgs, type Args } from "./context/args"
 import open from "open"
 import { writeHeapSnapshot } from "v8"
 import { PromptRefProvider, usePromptRef } from "./context/prompt"
+import { Terminal } from "@tui/util/terminal"
 
 async function getTerminalBackgroundColor(): Promise<"dark" | "light"> {
   // can't set raw mode if not a TTY
   if (!process.stdin.isTTY) return "dark"
 
-  // Skip terminal queries if disabled (for terminals that don't handle OSC sequences properly)
-  if (Flag.OPENCODE_DISABLE_TERMINAL_QUERIES) return "dark"
+  // Skip terminal queries if disabled or on problematic configurations
+  // (e.g., macOS Tahoe 26.x where OSC responses leak into input buffer)
+  if (Terminal.shouldSkipTerminalQueries()) return "dark"
 
   return new Promise((resolve) => {
     let timeout: NodeJS.Timeout
