@@ -821,6 +821,13 @@ export namespace ProviderTransform {
       )
     }
 
+    // Add endpoint info for Azure Anthropic errors
+    if (providerID === "azure-anthropic") {
+      const resourceName = process.env.AZURE_ANTHROPIC_RESOURCE_NAME || "nuvai-resource"
+      const baseURL = `https://${resourceName}.openai.azure.com/anthropic/v1`
+      message += `\n\nEndpoint: ${baseURL}`
+    }
+
     return message
   }
 }
