@@ -389,7 +389,7 @@ export const AuthLoginCommand = cmd({
             provider === "azure-cognitive-services"
               ? `https://${resourceName.trim()}.cognitiveservices.azure.com/openai`
               : provider === "azure-anthropic"
-                ? `https://${resourceName.trim()}.openai.azure.com/anthropic/v1`
+                ? `https://${resourceName.trim()}.openai.azure.com/anthropic/v1/messages`
                 : `https://${resourceName.trim()}.openai.azure.com`
 
           await Config.updateGlobal({

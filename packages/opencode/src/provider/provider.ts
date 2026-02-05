@@ -185,7 +185,8 @@ export namespace Provider {
       const resourceName = Env.get("AZURE_ANTHROPIC_RESOURCE_NAME") || "nuvai-resource"
 
       // Get baseURL from config (set by TUI or CLI) or construct from resource name (defaults to nuvai-resource)
-      const baseURL = providerConfig?.options?.baseURL ?? `https://${resourceName}.openai.azure.com/anthropic/v1`
+      const baseURL =
+        providerConfig?.options?.baseURL ?? `https://${resourceName}.openai.azure.com/anthropic/v1/messages`
 
       return {
         autoload: false,
