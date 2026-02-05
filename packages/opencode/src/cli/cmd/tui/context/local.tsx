@@ -365,6 +365,15 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             this.set(variants[index + 1])
           },
         },
+        recentProviders() {
+          return modelStore.recentProviders
+        },
+        addRecentProvider(providerID: string) {
+          const uniq = uniqueBy([providerID, ...modelStore.recentProviders], (x) => x)
+          if (uniq.length > 10) uniq.pop()
+          setModelStore("recentProviders", uniq)
+          save()
+        },
       }
     })
 
@@ -405,13 +414,10 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
 
     const provider = {
       recent() {
-        return modelStore.recentProviders
+        return model.recentProviders()
       },
       addRecent(providerID: string) {
-        const uniq = uniqueBy([providerID, ...modelStore.recentProviders], (x) => x)
-        if (uniq.length > 10) uniq.pop()
-        setModelStore("recentProviders", uniq)
-        save()
+        model.addRecentProvider(providerID)
       },
     }
 
