@@ -190,7 +190,7 @@ export namespace Provider {
         (resourceName ? `https://${resourceName}.openai.azure.com/anthropic/v1` : undefined)
 
       return {
-        autoload: false,
+        autoload: true,
         options: {
           baseURL,
           headers: {

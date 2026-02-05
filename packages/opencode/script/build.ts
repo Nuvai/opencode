@@ -117,6 +117,7 @@ if (!skipInstall) {
   await $`bun install --os="*" --cpu="*" @opentui/core@${pkg.dependencies["@opentui/core"]}`
   await $`bun install --os="*" --cpu="*" @parcel/watcher@${pkg.dependencies["@parcel/watcher"]}`
 }
+// Build each target sequentially with isolation to prevent cross-compilation crashes
 for (const item of targets) {
   const name = [
     pkg.name,
@@ -138,33 +139,60 @@ for (const item of targets) {
   const bunfsRoot = item.os === "win32" ? "B:/~BUN/root/" : "/$bunfs/root/"
   const workerRelativePath = path.relative(dir, parserWorker).replaceAll("\\", "/")
 
-  await Bun.build({
-    conditions: ["browser"],
-    tsconfig: "./tsconfig.json",
-    plugins: [solidPlugin],
-    sourcemap: "external",
-    compile: {
-      autoloadBunfig: false,
-      autoloadDotenv: false,
-      //@ts-ignore (bun types aren't up to date)
-      autoloadTsconfig: true,
-      autoloadPackageJson: true,
-      target: name.replace(pkg.name, "bun") as any,
-      outfile: `dist/${name}/bin/opencode`,
-      execArgv: [`--user-agent=opencode/${Script.version}`, "--use-system-ca", "--"],
-      windows: {},
-    },
-    entrypoints: ["./src/index.ts", parserWorker, workerPath],
-    define: {
-      OPENCODE_VERSION: `'${Script.version}'`,
-      OTUI_TREE_SITTER_WORKER_PATH: bunfsRoot + workerRelativePath,
-      OPENCODE_WORKER_PATH: workerPath,
-      OPENCODE_CHANNEL: `'${Script.channel}'`,
-      OPENCODE_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
-    },
-  })
+  // Write build script to temp file and run in subprocess to isolate memory
+  const tmpBuildScript = path.join(os.tmpdir(), `opencode-build-${name}-${Date.now()}.ts`)
+  const buildScript = `
+import solidPlugin from "${path.resolve(dir, "node_modules/@opentui/solid/scripts/solid-plugin")}";
+const result = await Bun.build({
+  conditions: ["browser"],
+  tsconfig: "${path.resolve(dir, "tsconfig.json")}",
+  plugins: [solidPlugin],
+  sourcemap: "external",
+  compile: {
+    autoloadBunfig: false,
+    autoloadDotenv: false,
+    autoloadTsconfig: true,
+    autoloadPackageJson: true,
+    target: "${name.replace(pkg.name, "bun")}",
+    outfile: "${path.resolve(dir, `dist/${name}/bin/opencode`)}",
+    execArgv: ["--user-agent=opencode/${Script.version}", "--use-system-ca", "--"],
+    windows: {},
+  },
+  entrypoints: ["${path.resolve(dir, "src/index.ts")}", "${parserWorker}", "${path.resolve(dir, workerPath)}"],
+  define: {
+    OPENCODE_VERSION: "'${Script.version}'",
+    OTUI_TREE_SITTER_WORKER_PATH: "${bunfsRoot}${workerRelativePath}",
+    OPENCODE_WORKER_PATH: "${workerPath}",
+    OPENCODE_CHANNEL: "'${Script.channel}'",
+    OPENCODE_LIBC: "${item.os === "linux" ? item.abi ?? "glibc" : ""}",
+  },
+});
+if (!result.success) {
+  console.error("Build failed:", result.logs);
+  process.exit(1);
+}
+`
+  await Bun.write(tmpBuildScript, buildScript)
 
-  await $`rm -rf ./dist/${name}/bin/tui`
+  try {
+    const proc = Bun.spawn(["bun", "run", tmpBuildScript], {
+      cwd: dir,
+      stdio: ["inherit", "inherit", "inherit"],
+    })
+    const exitCode = await proc.exited
+    if (exitCode !== 0) {
+      console.error(`Build failed for ${name} with exit code ${exitCode}`)
+      fs.unlinkSync(tmpBuildScript)
+      continue // Skip this target but continue with others
+    }
+  } catch (err) {
+    console.error(`Build crashed for ${name}:`, err)
+    fs.unlinkSync(tmpBuildScript)
+    continue // Skip this target but continue with others
+  }
+
+  fs.unlinkSync(tmpBuildScript)
+  await $`rm -rf ./dist/${name}/bin/tui`.quiet().nothrow()
   await Bun.file(`dist/${name}/package.json`).write(
     JSON.stringify(
       {
@@ -178,6 +206,9 @@ for (const item of targets) {
     ),
   )
   binaries[name] = Script.version
+
+  // Small delay between builds to let resources settle
+  await Bun.sleep(500)
 }
 
 if (Script.release) {
@@ -188,7 +219,11 @@ if (Script.release) {
       await $`zip -r ../../${key}.zip *`.cwd(`dist/${key}/bin`)
     }
   }
-  await $`gh release upload v${Script.version} ./dist/*.zip ./dist/*.tar.gz --clobber`
+
+  // Create release if it doesn't exist, then upload assets
+  const repo = process.env.GITHUB_REPOSITORY || "Nuvai/opencode"
+  await $`gh release create v${Script.version} --repo ${repo} --title "v${Script.version}" --notes "Release v${Script.version}" --draft=false`.nothrow()
+  await $`gh release upload v${Script.version} ./dist/*.zip ./dist/*.tar.gz --repo ${repo} --clobber`
 }
 
 // Create symlink for local builds (--single flag) so opencode is available in $PATH

@@ -33,6 +33,19 @@ await Promise.all([
   fs.mkdir(Global.Path.bin, { recursive: true }),
 ])
 
+// Create global config file if missing
+const globalConfigPath = path.join(Global.Path.config, "opencode.json")
+const configExists = await fs
+  .access(globalConfigPath)
+  .then(() => true)
+  .catch(() => false)
+if (!configExists) {
+  await fs.writeFile(
+    globalConfigPath,
+    JSON.stringify({ $schema: "https://opencode.ai/config.json" }, null, 2) + "\n",
+  )
+}
+
 const CACHE_VERSION = "21"
 
 const version = await Bun.file(path.join(Global.Path.cache, "version"))
