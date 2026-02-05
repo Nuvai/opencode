@@ -1,4 +1,5 @@
 import { RGBA } from "@opentui/core"
+import { Flag } from "@/flag/flag"
 
 export namespace Terminal {
   export type Colors = Awaited<ReturnType<typeof colors>>
@@ -18,6 +19,9 @@ export namespace Terminal {
     colors: RGBA[]
   }> {
     if (!process.stdin.isTTY) return { background: null, foreground: null, colors: [] }
+
+    // Skip terminal queries if disabled (for terminals that don't handle OSC sequences properly)
+    if (Flag.OPENCODE_DISABLE_TERMINAL_QUERIES) return { background: null, foreground: null, colors: [] }
 
     return new Promise((resolve) => {
       let background: RGBA | null = null
