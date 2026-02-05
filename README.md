@@ -41,8 +41,11 @@
 ### Installation
 
 ```bash
-# YOLO
-curl -fsSL https://opencode.ai/install | bash
+# Install from GitHub releases
+curl -fsSL https://raw.githubusercontent.com/Nuvai/opencode/main/install | bash
+
+# With specific version
+curl -fsSL https://raw.githubusercontent.com/Nuvai/opencode/main/install | bash -s -- --version 1.0.180
 
 # Package managers
 npm i -g opencode-ai@latest        # or bun/pnpm/yarn
@@ -87,8 +90,8 @@ The install script respects the following priority order for the installation pa
 
 ```bash
 # Examples
-OPENCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://opencode.ai/install | bash
-XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://opencode.ai/install | bash
+OPENCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://raw.githubusercontent.com/Nuvai/opencode/main/install | bash
+XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://raw.githubusercontent.com/Nuvai/opencode/main/install | bash
 ```
 
 ### Agents
