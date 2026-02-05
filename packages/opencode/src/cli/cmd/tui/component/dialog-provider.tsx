@@ -23,6 +23,10 @@ const PROVIDER_PRIORITY: Record<string, number> = {
   google: 5,
 }
 
+const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
+  "azure-anthropic": "Azure Anthropic (Nuvai)",
+}
+
 export function createDialogProviderOptions() {
   const sync = useSync()
   const dialog = useDialog()
@@ -32,14 +36,14 @@ export function createDialogProviderOptions() {
     return pipe(
       sync.data.provider_next.all,
       sortBy((x) => PROVIDER_PRIORITY[x.id] ?? 99),
-      map((provider) => {
-        const isConnected = connected().has(provider.id)
-        return {
-          title: provider.name,
-          value: provider.id,
-           description: {
+       map((provider) => {
+         const isConnected = connected().has(provider.id)
+         return {
+           title: PROVIDER_DISPLAY_NAMES[provider.id] ?? provider.name,
+           value: provider.id,
+            description: {
              opencode: "(Recommended)",
-             "azure-anthropic": "(Claude via Azure)",
+             "azure-anthropic": "(Nuvai)",
              anthropic: "(Claude Max or API key)",
              openai: "(ChatGPT Plus/Pro or API key)",
            }[provider.id],

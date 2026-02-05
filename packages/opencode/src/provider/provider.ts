@@ -182,12 +182,12 @@ export namespace Provider {
     "azure-anthropic": async () => {
       const config = await Config.get()
       const providerConfig = config.provider?.["azure-anthropic"]
-      const resourceName = Env.get("AZURE_ANTHROPIC_RESOURCE_NAME")
+      const resourceName = Env.get("AZURE_ANTHROPIC_RESOURCE_NAME") || "nuvai-resource"
 
-      // Get baseURL from config (set by TUI or CLI) or construct from env
+      // Get baseURL from config (set by TUI or CLI) or construct from resource name (defaults to nuvai-resource)
       const baseURL =
         providerConfig?.options?.baseURL ??
-        (resourceName ? `https://${resourceName}.openai.azure.com/anthropic/v1` : undefined)
+        `https://${resourceName}.openai.azure.com/anthropic/v1`
 
       return {
         autoload: false,
@@ -841,7 +841,7 @@ export namespace Provider {
       }
       database["azure-anthropic"] = {
         id: "azure-anthropic",
-        name: "Azure Anthropic",
+        name: "Azure Anthropic (Nuvai)",
         source: "custom",
         env: ["AZURE_ANTHROPIC_API_KEY"],
         options: {},

@@ -51,7 +51,7 @@ test("Azure Anthropic: provider is defined in list", async () => {
     fn: async () => {
       const providers = await Provider.list()
       expect(providers["azure-anthropic"]).toBeDefined()
-      expect(providers["azure-anthropic"].name).toBe("Azure Anthropic")
+      expect(providers["azure-anthropic"].name).toBe("Azure Anthropic (Nuvai)")
       expect(providers["azure-anthropic"].id).toBe("azure-anthropic")
     },
   })
