@@ -28,12 +28,13 @@ export function createDialogProviderOptions() {
   const dialog = useDialog()
   const sdk = useSDK()
   const local = useLocal()
-  const connected = createMemo(() => new Set(sync.data.provider_next.connected ?? []))
+  const providerNext = createMemo(() => sync.data.provider_next ?? { all: [], connected: [], default: {} })
+  const connected = createMemo(() => new Set(providerNext().connected ?? []))
   const recentProviders = createMemo(() => local.provider?.recent?.() ?? [])
 
   const options = createMemo(() => {
     const recents = recentProviders()
-    const providers = sync.data.provider_next.all ?? []
+    const providers = providerNext().all ?? []
 
     const allProviders = pipe(
       providers,
