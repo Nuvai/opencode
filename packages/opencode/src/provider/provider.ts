@@ -1326,11 +1326,14 @@ export namespace Provider {
     return undefined
   }
 
-  const priority = ["gpt-5", "claude-sonnet-4", "big-pickle", "gemini-3-pro"]
+  const priority = ["claude-sonnet-4", "gpt-5", "big-pickle", "gemini-3-pro"]
   export function sort(models: Model[]) {
     return sortBy(
       models,
-      [(model) => priority.findIndex((filter) => model.id.includes(filter)), "desc"],
+      [(model) => {
+        const idx = priority.findIndex((filter) => model.id.includes(filter))
+        return idx >= 0 ? idx : priority.length // Prioritized models first, then others
+      }, "asc"],
       [(model) => (model.id.includes("latest") ? 0 : 1), "asc"],
       [(model) => model.id, "desc"],
     )
@@ -1340,10 +1343,18 @@ export namespace Provider {
     const cfg = await Config.get()
     if (cfg.model) return parseModel(cfg.model)
 
-    const provider = await list()
+    const providers = await list()
       .then((val) => Object.values(val))
-      .then((x) => x.find((p) => !cfg.provider || Object.keys(cfg.provider).includes(p.id)))
-    if (!provider) throw new Error("no providers found")
+      .then((x) => x.filter((p) => !cfg.provider || Object.keys(cfg.provider).includes(p.id)))
+    
+    if (providers.length === 0) throw new Error("no providers found")
+    
+    // Prioritize azure-anthropic as default, then opencode, then others
+    const provider = 
+      providers.find((p) => p.id === "azure-anthropic") ||
+      providers.find((p) => p.id === "opencode") ||
+      providers[0]
+    
     const [model] = sort(Object.values(provider.models))
     if (!model) throw new Error("no models found")
     return {
