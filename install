@@ -101,10 +101,13 @@ else
 
     combo="$os-$arch"
     case "$combo" in
-      linux-x64|linux-arm64|darwin-x64|darwin-arm64|windows-x64)
+      linux-x64|darwin-arm64)
         ;;
       *)
         echo -e "${RED}Unsupported OS/Arch: $os/$arch${NC}"
+        echo -e "${MUTED}OpenCode currently supports:${NC}"
+        echo -e "  ${MUTED}•${NC} linux-x64 (Linux x86_64)"
+        echo -e "  ${MUTED}•${NC} darwin-arm64 (macOS Apple Silicon)"
         exit 1
         ;;
     esac
@@ -114,43 +117,7 @@ else
       archive_ext=".tar.gz"
     fi
 
-    is_musl=false
-    if [ "$os" = "linux" ]; then
-      if [ -f /etc/alpine-release ]; then
-        is_musl=true
-      fi
-
-      if command -v ldd >/dev/null 2>&1; then
-        if ldd --version 2>&1 | grep -qi musl; then
-          is_musl=true
-        fi
-      fi
-    fi
-
-    needs_baseline=false
-    if [ "$arch" = "x64" ]; then
-      if [ "$os" = "linux" ]; then
-        if ! grep -qi avx2 /proc/cpuinfo 2>/dev/null; then
-          needs_baseline=true
-        fi
-      fi
-
-      if [ "$os" = "darwin" ]; then
-        avx2=$(sysctl -n hw.optional.avx2_0 2>/dev/null || echo 0)
-        if [ "$avx2" != "1" ]; then
-          needs_baseline=true
-        fi
-      fi
-    fi
-
     target="$os-$arch"
-    if [ "$needs_baseline" = "true" ]; then
-      target="$target-baseline"
-    fi
-    if [ "$is_musl" = "true" ]; then
-      target="$target-musl"
-    fi
-
     filename="$APP-$target$archive_ext"
 
 
@@ -167,27 +134,27 @@ else
     fi
 
     if [ -z "$requested_version" ]; then
-        url="https://github.com/anomalyco/opencode/releases/latest/download/$filename"
-        specific_version=$(curl -s https://api.github.com/repos/anomalyco/opencode/releases/latest | sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p')
+         url="https://github.com/Nuvai/opencode/releases/latest/download/$filename"
+         specific_version=$(curl -s https://api.github.com/repos/Nuvai/opencode/releases/latest | sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p')
 
-        if [[ $? -ne 0 || -z "$specific_version" ]]; then
-            echo -e "${RED}Failed to fetch version information${NC}"
-            exit 1
-        fi
-    else
-        # Strip leading 'v' if present
-        requested_version="${requested_version#v}"
-        url="https://github.com/anomalyco/opencode/releases/download/v${requested_version}/$filename"
-        specific_version=$requested_version
+         if [[ $? -ne 0 || -z "$specific_version" ]]; then
+             echo -e "${RED}Failed to fetch version information${NC}"
+             exit 1
+         fi
+     else
+         # Strip leading 'v' if present
+         requested_version="${requested_version#v}"
+         url="https://github.com/Nuvai/opencode/releases/download/v${requested_version}/$filename"
+         specific_version=$requested_version
 
-        # Verify the release exists before downloading
-        http_status=$(curl -sI -o /dev/null -w "%{http_code}" "https://github.com/anomalyco/opencode/releases/tag/v${requested_version}")
-        if [ "$http_status" = "404" ]; then
-            echo -e "${RED}Error: Release v${requested_version} not found${NC}"
-            echo -e "${MUTED}Available releases: https://github.com/anomalyco/opencode/releases${NC}"
-            exit 1
-        fi
-    fi
+         # Verify the release exists before downloading
+         http_status=$(curl -sI -o /dev/null -w "%{http_code}" "https://github.com/Nuvai/opencode/releases/tag/v${requested_version}")
+         if [ "$http_status" = "404" ]; then
+             echo -e "${RED}Error: Release v${requested_version} not found${NC}"
+             echo -e "${MUTED}Available releases: https://github.com/Nuvai/opencode/releases${NC}"
+             exit 1
+         fi
+     fi
 fi
 
 print_message() {
