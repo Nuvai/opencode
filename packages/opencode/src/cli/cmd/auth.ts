@@ -371,39 +371,39 @@ export const AuthLoginCommand = cmd({
           validate: (x) => (x && x.length > 0 ? undefined : "Required"),
         })
         if (prompts.isCancel(key)) throw new UI.CancelledError()
-         await Auth.set(provider, {
-           type: "api",
-           key,
-         })
+        await Auth.set(provider, {
+          type: "api",
+          key: key.trim(),
+        })
 
-         // Handle Azure resource name configuration
-         if (provider === "azure" || provider === "azure-cognitive-services" || provider === "azure-anthropic") {
-           const resourceName = await prompts.text({
-             message: "Enter your Azure resource name (e.g., my-openai-resource)",
-             placeholder: "my-openai-resource",
-             validate: (x) => (x && x.length > 0 ? undefined : "Required"),
-           })
-           if (prompts.isCancel(resourceName)) throw new UI.CancelledError()
+        // Handle Azure resource name configuration
+        if (provider === "azure" || provider === "azure-cognitive-services" || provider === "azure-anthropic") {
+          const resourceName = await prompts.text({
+            message: "Enter your Azure resource name (e.g., my-openai-resource)",
+            placeholder: "my-openai-resource",
+            validate: (x) => (x && x.length > 0 ? undefined : "Required"),
+          })
+          if (prompts.isCancel(resourceName)) throw new UI.CancelledError()
 
-           const baseURL =
-             provider === "azure-cognitive-services"
-               ? `https://${resourceName}.cognitiveservices.azure.com/openai`
-               : provider === "azure-anthropic"
-                 ? `https://${resourceName}.openai.azure.com/anthropic/v1`
-                 : `https://${resourceName}.openai.azure.com`
+          const baseURL =
+            provider === "azure-cognitive-services"
+              ? `https://${resourceName.trim()}.cognitiveservices.azure.com/openai`
+              : provider === "azure-anthropic"
+                ? `https://${resourceName.trim()}.openai.azure.com/anthropic/v1`
+                : `https://${resourceName.trim()}.openai.azure.com`
 
-           await Config.updateGlobal({
-             provider: {
-               [provider]: {
-                 options: {
-                   baseURL,
-                 },
-               },
-             },
-           })
-         }
+          await Config.updateGlobal({
+            provider: {
+              [provider]: {
+                options: {
+                  baseURL,
+                },
+              },
+            },
+          })
+        }
 
-         prompts.outro("Done")
+        prompts.outro("Done")
       },
     })
   },
