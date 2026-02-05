@@ -330,7 +330,7 @@ download_and_install() {
     chmod 755 "${INSTALL_DIR}/opencode"
     # macOS: Clear quarantine flag to prevent "damaged" error
     if [[ "$os" == "darwin" ]]; then
-        xattr -cr "${INSTALL_DIR}/opencode" 2>/dev/null || true
+        xattr -c "${INSTALL_DIR}/opencode" 2>/dev/null || true
     fi
     rm -rf "$tmp_dir"
 }
@@ -341,7 +341,7 @@ install_from_binary() {
     chmod 755 "${INSTALL_DIR}/opencode"
     # macOS: Clear quarantine flag to prevent "damaged" error
     if [[ "$(uname -s)" == "Darwin" ]]; then
-        xattr -cr "${INSTALL_DIR}/opencode" 2>/dev/null || true
+        xattr -c "${INSTALL_DIR}/opencode" 2>/dev/null || true
     fi
 }
 
