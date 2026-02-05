@@ -755,20 +755,20 @@ export namespace Provider {
 
     if (!database["azure-anthropic"]) {
       const azureAnthropicModels: Record<string, Model> = {
-        "claude-3-5-haiku-20241022": {
-          id: "claude-3-5-haiku-20241022",
+        "claude-haiku-4-5-20250514": {
+          id: "claude-haiku-4-5-20250514",
           providerID: "azure-anthropic",
-          name: "Claude 3.5 Haiku",
-          family: "claude-3.5",
+          name: "Claude Haiku 4.5",
+          family: "claude-4",
           api: {
-            id: "claude-3-5-haiku-20241022",
+            id: "claude-haiku-4-5-20250514",
             url: "",
             npm: "@ai-sdk/anthropic",
           },
           status: "active",
           headers: {},
           options: {},
-          cost: { input: 1, output: 5, cache: { read: 0.1, write: 1.25 } },
+          cost: { input: 0.8, output: 4, cache: { read: 0.08, write: 1 } },
           limit: { context: 200000, output: 8192 },
           capabilities: {
             temperature: true,
@@ -779,7 +779,7 @@ export namespace Provider {
             output: { text: true, audio: false, image: false, video: false, pdf: false },
             interleaved: false,
           },
-          release_date: "2024-10-22",
+          release_date: "2025-05-14",
           variants: {},
         },
       }

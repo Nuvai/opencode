@@ -76,15 +76,15 @@ test("Azure Anthropic: includes all three Claude models", async () => {
       const azureAnthropicProvider = providers["azure-anthropic"]
       expect(azureAnthropicProvider).toBeDefined()
 
-      // Check for Claude 3.5 Haiku model
+      // Check for Claude Haiku 4.5 model
       const modelIds = Object.keys(azureAnthropicProvider.models)
       expect(modelIds.length).toBe(1)
-      expect(modelIds).toContain("claude-3-5-haiku-20241022")
+      expect(modelIds).toContain("claude-haiku-4-5-20250514")
     },
   })
 })
 
-test("Azure Anthropic: Claude 3.5 Haiku has correct configuration", async () => {
+test("Azure Anthropic: Claude Haiku 4.5 has correct configuration", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
@@ -100,13 +100,13 @@ test("Azure Anthropic: Claude 3.5 Haiku has correct configuration", async () => 
     init: async () => {},
     fn: async () => {
       const providers = await Provider.list()
-      const model = providers["azure-anthropic"].models["claude-3-5-haiku-20241022"]
+      const model = providers["azure-anthropic"].models["claude-haiku-4-5-20250514"]
       expect(model).toBeDefined()
-      expect(model.name).toBe("Claude 3.5 Haiku")
-      expect(model.family).toBe("claude-3.5")
+      expect(model.name).toBe("Claude Haiku 4.5")
+      expect(model.family).toBe("claude-4")
       expect(model.status).toBe("active")
-      expect(model.cost.input).toBe(1)
-      expect(model.cost.output).toBe(5)
+      expect(model.cost.input).toBe(0.8)
+      expect(model.cost.output).toBe(4)
       expect(model.limit.output).toBe(8192)
     },
   })
