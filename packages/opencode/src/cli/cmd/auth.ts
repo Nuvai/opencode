@@ -352,6 +352,14 @@ export const AuthLoginCommand = cmd({
           prompts.log.info("You can create an api key at https://vercel.link/ai-gateway-token")
         }
 
+        if (provider === "azure-anthropic") {
+          prompts.log.info(
+            "Azure Anthropic requires a resource name to construct the endpoint URL.\n" +
+              "You can find this in the Azure portal under your Azure OpenAI resource.\n" +
+              "The endpoint will be: https://{resource-name}.openai.azure.com/anthropic/v1",
+          )
+        }
+
         if (["cloudflare", "cloudflare-ai-gateway"].includes(provider)) {
           prompts.log.info(
             "Cloudflare AI Gateway can be configured with CLOUDFLARE_GATEWAY_ID, CLOUDFLARE_ACCOUNT_ID, and CLOUDFLARE_API_TOKEN environment variables. Read more: https://opencode.ai/docs/providers/#cloudflare-ai-gateway",
@@ -363,12 +371,39 @@ export const AuthLoginCommand = cmd({
           validate: (x) => (x && x.length > 0 ? undefined : "Required"),
         })
         if (prompts.isCancel(key)) throw new UI.CancelledError()
-        await Auth.set(provider, {
-          type: "api",
-          key,
-        })
+         await Auth.set(provider, {
+           type: "api",
+           key,
+         })
 
-        prompts.outro("Done")
+         // Handle Azure resource name configuration
+         if (provider === "azure" || provider === "azure-cognitive-services" || provider === "azure-anthropic") {
+           const resourceName = await prompts.text({
+             message: "Enter your Azure resource name (e.g., my-openai-resource)",
+             placeholder: "my-openai-resource",
+             validate: (x) => (x && x.length > 0 ? undefined : "Required"),
+           })
+           if (prompts.isCancel(resourceName)) throw new UI.CancelledError()
+
+           const baseURL =
+             provider === "azure-cognitive-services"
+               ? `https://${resourceName}.cognitiveservices.azure.com/openai`
+               : provider === "azure-anthropic"
+                 ? `https://${resourceName}.openai.azure.com/anthropic/v1`
+                 : `https://${resourceName}.openai.azure.com`
+
+           await Config.updateGlobal({
+             provider: {
+               [provider]: {
+                 options: {
+                   baseURL,
+                 },
+               },
+             },
+           })
+         }
+
+         prompts.outro("Done")
       },
     })
   },
