@@ -76,81 +76,10 @@ test("Azure Anthropic: includes all three Claude models", async () => {
       const azureAnthropicProvider = providers["azure-anthropic"]
       expect(azureAnthropicProvider).toBeDefined()
 
-      // Check for all three models
+      // Check for Claude 3.5 Haiku model
       const modelIds = Object.keys(azureAnthropicProvider.models)
-      expect(modelIds).toContain("claude-sonnet-4-20250514")
-      expect(modelIds).toContain("claude-3-5-sonnet-20241022")
+      expect(modelIds.length).toBe(1)
       expect(modelIds).toContain("claude-3-5-haiku-20241022")
-    },
-  })
-})
-
-test("Azure Anthropic: Claude Sonnet 4 has correct configuration", async () => {
-  await using tmp = await tmpdir({
-    init: async (dir) => {
-      await Bun.write(
-        path.join(dir, "opencode.json"),
-        JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
-        }),
-      )
-    },
-  })
-  await Instance.provide({
-    directory: tmp.path,
-    init: async () => {},
-    fn: async () => {
-      const providers = await Provider.list()
-      const model = providers["azure-anthropic"].models["claude-sonnet-4-20250514"]
-      expect(model).toBeDefined()
-      expect(model.name).toBe("Claude Sonnet 4")
-      expect(model.providerID).toBe("azure-anthropic")
-      expect(model.family).toBe("claude-4")
-      expect(model.status).toBe("active")
-      expect(model.release_date).toBe("2025-05-14")
-
-      // Check capabilities
-      expect(model.capabilities.temperature).toBe(true)
-      expect(model.capabilities.toolcall).toBe(true)
-      expect(model.capabilities.attachment).toBe(true)
-      expect(model.capabilities.input.text).toBe(true)
-      expect(model.capabilities.input.image).toBe(true)
-      expect(model.capabilities.interleaved).toBe(true)
-
-      // Check limits
-      expect(model.limit.context).toBe(200000)
-      expect(model.limit.output).toBe(16384)
-
-      // Check cost
-      expect(model.cost.input).toBe(3)
-      expect(model.cost.output).toBe(15)
-    },
-  })
-})
-
-test("Azure Anthropic: Claude 3.5 Sonnet has correct configuration", async () => {
-  await using tmp = await tmpdir({
-    init: async (dir) => {
-      await Bun.write(
-        path.join(dir, "opencode.json"),
-        JSON.stringify({
-          $schema: "https://opencode.ai/config.json",
-        }),
-      )
-    },
-  })
-  await Instance.provide({
-    directory: tmp.path,
-    init: async () => {},
-    fn: async () => {
-      const providers = await Provider.list()
-      const model = providers["azure-anthropic"].models["claude-3-5-sonnet-20241022"]
-      expect(model).toBeDefined()
-      expect(model.name).toBe("Claude 3.5 Sonnet")
-      expect(model.family).toBe("claude-3.5")
-      expect(model.status).toBe("active")
-      expect(model.capabilities.interleaved).toBe(false)
-      expect(model.limit.output).toBe(8192)
     },
   })
 })
@@ -235,9 +164,7 @@ test("Azure Anthropic: constructs baseURL from env var when no config", async ()
     fn: async () => {
       const providers = await Provider.list()
       expect(providers["azure-anthropic"]).toBeDefined()
-      expect(providers["azure-anthropic"].options?.baseURL).toBe(
-        "https://my-resource.openai.azure.com/anthropic/v1",
-      )
+      expect(providers["azure-anthropic"].options?.baseURL).toBe("https://my-resource.openai.azure.com/anthropic/v1")
     },
   })
 })

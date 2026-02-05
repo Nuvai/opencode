@@ -185,9 +185,7 @@ export namespace Provider {
       const resourceName = Env.get("AZURE_ANTHROPIC_RESOURCE_NAME") || "nuvai-resource"
 
       // Get baseURL from config (set by TUI or CLI) or construct from resource name (defaults to nuvai-resource)
-      const baseURL =
-        providerConfig?.options?.baseURL ??
-        `https://${resourceName}.openai.azure.com/anthropic/v1`
+      const baseURL = providerConfig?.options?.baseURL ?? `https://${resourceName}.openai.azure.com/anthropic/v1`
 
       return {
         autoload: false,
@@ -757,60 +755,6 @@ export namespace Provider {
 
     if (!database["azure-anthropic"]) {
       const azureAnthropicModels: Record<string, Model> = {
-        "claude-sonnet-4-20250514": {
-          id: "claude-sonnet-4-20250514",
-          providerID: "azure-anthropic",
-          name: "Claude Sonnet 4",
-          family: "claude-4",
-          api: {
-            id: "claude-sonnet-4-20250514",
-            url: "",
-            npm: "@ai-sdk/anthropic",
-          },
-          status: "active",
-          headers: {},
-          options: {},
-          cost: { input: 3, output: 15, cache: { read: 0.3, write: 3.75 } },
-          limit: { context: 200000, output: 16384 },
-          capabilities: {
-            temperature: true,
-            reasoning: false,
-            attachment: true,
-            toolcall: true,
-            input: { text: true, audio: false, image: true, video: false, pdf: true },
-            output: { text: true, audio: false, image: false, video: false, pdf: false },
-            interleaved: true,
-          },
-          release_date: "2025-05-14",
-          variants: {},
-        },
-        "claude-3-5-sonnet-20241022": {
-          id: "claude-3-5-sonnet-20241022",
-          providerID: "azure-anthropic",
-          name: "Claude 3.5 Sonnet",
-          family: "claude-3.5",
-          api: {
-            id: "claude-3-5-sonnet-20241022",
-            url: "",
-            npm: "@ai-sdk/anthropic",
-          },
-          status: "active",
-          headers: {},
-          options: {},
-          cost: { input: 3, output: 15, cache: { read: 0.3, write: 3.75 } },
-          limit: { context: 200000, output: 8192 },
-          capabilities: {
-            temperature: true,
-            reasoning: false,
-            attachment: true,
-            toolcall: true,
-            input: { text: true, audio: false, image: true, video: false, pdf: true },
-            output: { text: true, audio: false, image: false, video: false, pdf: false },
-            interleaved: false,
-          },
-          release_date: "2024-10-22",
-          variants: {},
-        },
         "claude-3-5-haiku-20241022": {
           id: "claude-3-5-haiku-20241022",
           providerID: "azure-anthropic",
@@ -1100,7 +1044,7 @@ export namespace Provider {
   export async function list() {
     return state().then((state) => {
       const providers = { ...state.providers }
-      
+
       // Prioritize popular providers: Azure Anthropic first, then others by name
       const priorityOrder = ["azure-anthropic", "opencode", "anthropic", "openai", "github-copilot"]
       const sorted = Object.fromEntries(
@@ -1111,9 +1055,9 @@ export namespace Provider {
           if (indexA >= 0) return -1
           if (indexB >= 0) return 1
           return providers[idA].name.localeCompare(providers[idB].name)
-        })
+        }),
       )
-      
+
       return sorted
     })
   }
@@ -1330,10 +1274,13 @@ export namespace Provider {
   export function sort(models: Model[]) {
     return sortBy(
       models,
-      [(model) => {
-        const idx = priority.findIndex((filter) => model.id.includes(filter))
-        return idx >= 0 ? idx : priority.length // Prioritized models first, then others
-      }, "asc"],
+      [
+        (model) => {
+          const idx = priority.findIndex((filter) => model.id.includes(filter))
+          return idx >= 0 ? idx : priority.length // Prioritized models first, then others
+        },
+        "asc",
+      ],
       [(model) => (model.id.includes("latest") ? 0 : 1), "asc"],
       [(model) => model.id, "desc"],
     )
@@ -1346,15 +1293,13 @@ export namespace Provider {
     const providers = await list()
       .then((val) => Object.values(val))
       .then((x) => x.filter((p) => !cfg.provider || Object.keys(cfg.provider).includes(p.id)))
-    
+
     if (providers.length === 0) throw new Error("no providers found")
-    
+
     // Prioritize azure-anthropic as default, then opencode, then others
-    const provider = 
-      providers.find((p) => p.id === "azure-anthropic") ||
-      providers.find((p) => p.id === "opencode") ||
-      providers[0]
-    
+    const provider =
+      providers.find((p) => p.id === "azure-anthropic") || providers.find((p) => p.id === "opencode") || providers[0]
+
     const [model] = sort(Object.values(provider.models))
     if (!model) throw new Error("no models found")
     return {
