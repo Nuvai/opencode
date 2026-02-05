@@ -54,7 +54,7 @@ export function createDialogProviderOptions() {
           footer: isConnected ? "Connected" : undefined,
           async onSelect() {
             local.provider?.addRecent?.(provider.id)
-            const methods = sync.data.provider_auth[provider.id] ?? [
+            const methods = sync.data.provider_auth?.[provider.id] ?? [
               {
                 type: "api",
                 label: "API key",
