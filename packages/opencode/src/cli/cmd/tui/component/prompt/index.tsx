@@ -81,7 +81,7 @@ export function Prompt(props: PromptProps) {
       message: "Connect a provider to send prompts",
       duration: 3000,
     })
-    if (sync.data.provider.length === 0) {
+    if ((sync.data.provider ?? []).length === 0) {
       dialog.replace(() => <DialogProviderConnect />)
     }
   }
@@ -574,7 +574,7 @@ export function Prompt(props: PromptProps) {
       iife(() => {
         const firstLine = inputText.split("\n")[0]
         const command = firstLine.split(" ")[0].slice(1)
-        return sync.data.command.some((x) => x.name === command)
+        return (sync.data.command ?? []).some((x) => x.name === command)
       })
     ) {
       // Parse command from first line, preserve multi-line content in arguments

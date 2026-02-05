@@ -31,10 +31,10 @@ export function Home() {
   })
 
   const connectedMcpCount = createMemo(() => {
-    return Object.values(sync.data.mcp).filter((x) => x.status === "connected").length
+    return Object.values(sync.data.mcp ?? {}).filter((x) => x.status === "connected").length
   })
 
-  const isFirstTimeUser = createMemo(() => sync.data.session.length === 0)
+  const isFirstTimeUser = createMemo(() => (sync.data.session ?? []).length === 0)
   const tipsHidden = createMemo(() => kv.get("tips_hidden", false))
   const showTips = createMemo(() => {
     // Don't show tips for first-time users

@@ -11,7 +11,7 @@ import * as fuzzysort from "fuzzysort"
 export function useConnected() {
   const sync = useSync()
   return createMemo(() =>
-    sync.data.provider.some((x) => x.id !== "opencode" || Object.values(x.models).some((y) => y.cost?.input !== 0)),
+    (sync.data.provider ?? []).some((x) => x.id !== "opencode" || Object.values(x.models).some((y) => y.cost?.input !== 0)),
   )
 }
 
@@ -47,7 +47,7 @@ export function DialogModel(props: { providerID?: string }) {
 
     const favoriteOptions = showSections
       ? favorites.flatMap((item) => {
-          const provider = sync.data.provider.find((x) => x.id === item.providerID)
+          const provider = (sync.data.provider ?? []).find((x) => x.id === item.providerID)
           if (!provider) return []
           const model = provider.models[item.modelID]
           if (!model) return []
@@ -80,7 +80,7 @@ export function DialogModel(props: { providerID?: string }) {
 
     const recentOptions = showSections
       ? recentList.flatMap((item) => {
-          const provider = sync.data.provider.find((x) => x.id === item.providerID)
+          const provider = (sync.data.provider ?? []).find((x) => x.id === item.providerID)
           if (!provider) return []
           const model = provider.models[item.modelID]
           if (!model) return []
@@ -196,7 +196,7 @@ export function DialogModel(props: { providerID?: string }) {
   })
 
   const provider = createMemo(() =>
-    props.providerID ? sync.data.provider.find((x) => x.id === props.providerID) : null,
+    props.providerID ? (sync.data.provider ?? []).find((x) => x.id === props.providerID) : null,
   )
 
   const title = createMemo(() => {

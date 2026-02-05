@@ -163,24 +163,24 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
               <box
                 flexDirection="row"
                 gap={1}
-                onMouseDown={() => sync.data.lsp.length > 2 && setExpanded("lsp", !expanded.lsp)}
+                onMouseDown={() => (sync.data.lsp ?? []).length > 2 && setExpanded("lsp", !expanded.lsp)}
               >
-                <Show when={sync.data.lsp.length > 2}>
+                <Show when={(sync.data.lsp ?? []).length > 2}>
                   <text fg={theme.text}>{expanded.lsp ? "▼" : "▶"}</text>
                 </Show>
                 <text fg={theme.text}>
                   <b>LSP</b>
                 </text>
               </box>
-              <Show when={sync.data.lsp.length <= 2 || expanded.lsp}>
-                <Show when={sync.data.lsp.length === 0}>
+              <Show when={(sync.data.lsp ?? []).length <= 2 || expanded.lsp}>
+                <Show when={(sync.data.lsp ?? []).length === 0}>
                   <text fg={theme.textMuted}>
-                    {sync.data.config.lsp === false
+                    {sync.data.config?.lsp === false
                       ? "LSPs have been disabled in settings"
                       : "LSPs will activate as files are read"}
                   </text>
                 </Show>
-                <For each={sync.data.lsp}>
+                <For each={sync.data.lsp ?? []}>
                   {(item) => (
                     <box flexDirection="row" gap={1}>
                       <text

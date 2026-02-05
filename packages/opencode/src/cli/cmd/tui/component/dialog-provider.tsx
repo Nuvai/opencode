@@ -33,7 +33,7 @@ export function createDialogProviderOptions() {
   const recentProviders = createMemo(() => local.provider?.recent?.() ?? [])
 
   const options = createMemo(() => {
-    const recents = recentProviders()
+    const recents = recentProviders() ?? []
     const providers = providerNext().all ?? []
 
     const allProviders = pipe(

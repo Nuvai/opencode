@@ -21,7 +21,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     const toast = useToast()
 
     function isModelValid(model: { providerID: string; modelID: string }) {
-      const provider = sync.data.provider.find((x) => x.id === model.providerID)
+      const provider = (sync.data.provider ?? []).find((x) => x.id === model.providerID)
       return !!provider?.models[model.modelID]
     }
 
@@ -34,8 +34,8 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     }
 
     const agent = iife(() => {
-      const agents = createMemo(() => sync.data.agent.filter((x) => x.mode !== "subagent" && !x.hidden))
-      const visibleAgents = createMemo(() => sync.data.agent.filter((x) => !x.hidden))
+      const agents = createMemo(() => (sync.data.agent ?? []).filter((x) => x.mode !== "subagent" && !x.hidden))
+      const visibleAgents = createMemo(() => (sync.data.agent ?? []).filter((x) => !x.hidden))
       const [agentStore, setAgentStore] = createStore<{
         current: string
       }>({
@@ -169,7 +169,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           }
         }
 
-        if (sync.data.config.model) {
+        if (sync.data.config?.model) {
           const { providerID, modelID } = Provider.parseModel(sync.data.config.model)
           if (isModelValid({ providerID, modelID })) {
             return {
@@ -228,7 +228,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
               reasoning: false,
             }
           }
-          const provider = sync.data.provider.find((x) => x.id === value.providerID)
+          const provider = (sync.data.provider ?? []).find((x) => x.id === value.providerID)
           const info = provider?.models[value.modelID]
           return {
             provider: provider?.name ?? value.providerID,
@@ -337,7 +337,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           list() {
             const m = currentModel()
             if (!m) return []
-            const provider = sync.data.provider.find((x) => x.id === m.providerID)
+            const provider = (sync.data.provider ?? []).find((x) => x.id === m.providerID)
             const info = provider?.models[m.modelID]
             if (!info?.variants) return []
             return Object.keys(info.variants)
