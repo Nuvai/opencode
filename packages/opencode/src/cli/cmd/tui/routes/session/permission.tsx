@@ -128,7 +128,7 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
   const input = createMemo(() => {
     const tool = props.request.tool
     if (!tool) return {}
-    const parts = sync.data.part[tool.messageID] ?? []
+    const parts = sync.data.part?.[tool.messageID] ?? []
     for (const part of parts) {
       if (part.type === "tool" && part.callID === tool.callID && part.state.status !== "pending") {
         return part.state.input ?? {}

@@ -10,10 +10,10 @@ export function DialogStatus() {
   const sync = useSync()
   const { theme } = useTheme()
 
-  const enabledFormatters = createMemo(() => sync.data.formatter.filter((f) => f.enabled))
+  const enabledFormatters = createMemo(() => (sync.data.formatter ?? []).filter((f) => f.enabled))
 
   const plugins = createMemo(() => {
-    const list = sync.data.config.plugin ?? []
+    const list = sync.data.config?.plugin ?? []
     const result = list.map((value) => {
       if (value.startsWith("file://")) {
         const path = value.substring("file://".length)
@@ -46,10 +46,10 @@ export function DialogStatus() {
         <text fg={theme.textMuted}>esc</text>
       </box>
       <text fg={theme.textMuted}>OpenCode v{Installation.VERSION}</text>
-      <Show when={Object.keys(sync.data.mcp).length > 0} fallback={<text fg={theme.text}>No MCP Servers</text>}>
+      <Show when={Object.keys(sync.data.mcp ?? {}).length > 0} fallback={<text fg={theme.text}>No MCP Servers</text>}>
         <box>
-          <text fg={theme.text}>{Object.keys(sync.data.mcp).length} MCP Servers</text>
-          <For each={Object.entries(sync.data.mcp)}>
+          <text fg={theme.text}>{Object.keys(sync.data.mcp ?? {}).length} MCP Servers</text>
+          <For each={Object.entries(sync.data.mcp ?? {})}>
             {([key, item]) => (
               <box flexDirection="row" gap={1}>
                 <text
@@ -89,10 +89,10 @@ export function DialogStatus() {
           </For>
         </box>
       </Show>
-      {sync.data.lsp.length > 0 && (
+      {(sync.data.lsp ?? []).length > 0 && (
         <box>
-          <text fg={theme.text}>{sync.data.lsp.length} LSP Servers</text>
-          <For each={sync.data.lsp}>
+          <text fg={theme.text}>{(sync.data.lsp ?? []).length} LSP Servers</text>
+          <For each={sync.data.lsp ?? []}>
             {(item) => (
               <box flexDirection="row" gap={1}>
                 <text

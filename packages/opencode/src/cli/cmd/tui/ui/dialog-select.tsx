@@ -72,10 +72,11 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
   let input: InputRenderable
 
   const filtered = createMemo(() => {
-    if (props.skipFilter) return props.options.filter((x) => x.disabled !== true)
+    const allOptions = props.options ?? []
+    if (props.skipFilter) return allOptions.filter((x) => x.disabled !== true)
     const needle = store.filter.toLowerCase()
     const options = pipe(
-      props.options,
+      allOptions,
       filter((x) => x.disabled !== true),
     )
     if (!needle) return options
@@ -101,13 +102,14 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
   })
 
   const grouped = createMemo(() => {
+    const filteredOptions = filtered() ?? []
     const result = pipe(
-      filtered(),
+      filteredOptions,
       groupBy((x) => x.category ?? ""),
       // mapValues((x) => x.sort((a, b) => a.title.localeCompare(b.title))),
       entries(),
     )
-    return result
+    return result ?? []
   })
 
   const flat = createMemo(() => {

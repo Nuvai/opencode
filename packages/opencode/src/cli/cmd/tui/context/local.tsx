@@ -185,9 +185,9 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           }
         }
 
-        const provider = sync.data.provider[0]
+        const provider = sync.data.provider?.[0]
         if (!provider) return undefined
-        const defaultModel = sync.data.provider_default[provider.id]
+        const defaultModel = sync.data.provider_default?.[provider.id]
         const firstModel = Object.values(provider.models)[0]
         const model = defaultModel ?? firstModel?.id
         if (!model) return undefined
@@ -370,11 +370,11 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
 
     const mcp = {
       isEnabled(name: string) {
-        const status = sync.data.mcp[name]
+        const status = sync.data.mcp?.[name]
         return status?.status === "connected"
       },
       async toggle(name: string) {
-        const status = sync.data.mcp[name]
+        const status = sync.data.mcp?.[name]
         if (status?.status === "connected") {
           // Disable: disconnect the MCP
           await sdk.client.mcp.disconnect({ name })

@@ -122,14 +122,14 @@ export function Session() {
       .filter((x) => x.parentID === parentID || x.id === parentID)
       .toSorted((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
   })
-  const messages = createMemo(() => sync.data.message[route.sessionID] ?? [])
+  const messages = createMemo(() => sync.data.message?.[route.sessionID] ?? [])
   const permissions = createMemo(() => {
     if (session()?.parentID) return []
-    return children().flatMap((x) => sync.data.permission[x.id] ?? [])
+    return children().flatMap((x) => sync.data.permission?.[x.id] ?? [])
   })
   const questions = createMemo(() => {
     if (session()?.parentID) return []
-    return children().flatMap((x) => sync.data.question[x.id] ?? [])
+    return children().flatMap((x) => sync.data.question?.[x.id] ?? [])
   })
 
   const pending = createMemo(() => {
@@ -257,7 +257,7 @@ export function Session() {
         if (!message) return false
 
         // Check if message has valid non-synthetic, non-ignored text parts
-        const parts = sync.data.part[message.id]
+        const parts = sync.data.part?.[message.id]
         if (!parts || !Array.isArray(parts)) return false
 
         return parts.some((part) => part && part.type === "text" && !part.synthetic && !part.ignored)
@@ -463,7 +463,7 @@ export function Session() {
           .then(() => {
             toBottom()
           })
-        const parts = sync.data.part[message.id]
+        const parts = sync.data.part?.[message.id] ?? []
         prompt.set(
           parts.reduce(
             (agg, part) => {
@@ -671,7 +671,7 @@ export function Session() {
       category: "Session",
       hidden: true,
       onSelect: () => {
-        const messages = sync.data.message[route.sessionID]
+        const messages = sync.data.message?.[route.sessionID]
         if (!messages || !messages.length) return
 
         // Find the most recent user message with non-ignored, non-synthetic text parts
@@ -679,7 +679,7 @@ export function Session() {
           const message = messages[i]
           if (!message || message.role !== "user") continue
 
-          const parts = sync.data.part[message.id]
+          const parts = sync.data.part?.[message.id]
           if (!parts || !Array.isArray(parts)) continue
 
           const hasValidTextPart = parts.some(
@@ -728,7 +728,7 @@ export function Session() {
           return
         }
 
-        const parts = sync.data.part[lastAssistantMessage.id] ?? []
+        const parts = sync.data.part?.[lastAssistantMessage.id] ?? []
         const textParts = parts.filter((part) => part.type === "text")
         if (textParts.length === 0) {
           toast.show({ message: "No text parts found in last assistant message", variant: "error" })
@@ -769,7 +769,7 @@ export function Session() {
           const sessionMessages = messages()
           const transcript = formatTranscript(
             sessionData,
-            sessionMessages.map((msg) => ({ info: msg, parts: sync.data.part[msg.id] ?? [] })),
+            sessionMessages.map((msg) => ({ info: msg, parts: sync.data.part?.[msg.id] ?? [] })),
             {
               thinking: showThinking(),
               toolDetails: showDetails(),
@@ -813,7 +813,7 @@ export function Session() {
 
           const transcript = formatTranscript(
             sessionData,
-            sessionMessages.map((msg) => ({ info: msg, parts: sync.data.part[msg.id] ?? [] })),
+            sessionMessages.map((msg) => ({ info: msg, parts: sync.data.part?.[msg.id] ?? [] })),
             {
               thinking: options.thinking,
               toolDetails: options.toolDetails,
@@ -1059,7 +1059,7 @@ export function Session() {
                           ))
                         }}
                         message={message as UserMessage}
-                        parts={sync.data.part[message.id] ?? []}
+                        parts={sync.data.part?.[message.id] ?? []}
                         pending={pending()}
                       />
                     </Match>
@@ -1067,7 +1067,7 @@ export function Session() {
                       <AssistantMessage
                         last={lastAssistant()?.id === message.id}
                         message={message as AssistantMessage}
-                        parts={sync.data.part[message.id] ?? []}
+                        parts={sync.data.part?.[message.id] ?? []}
                       />
                     </Match>
                   </Switch>
@@ -1236,7 +1236,7 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
   const local = useLocal()
   const { theme } = useTheme()
   const sync = useSync()
-  const messages = createMemo(() => sync.data.message[props.message.sessionID] ?? [])
+  const messages = createMemo(() => sync.data.message?.[props.message.sessionID] ?? [])
 
   const final = createMemo(() => {
     return props.message.finish && !["tool-calls", "unknown"].includes(props.message.finish)
@@ -1406,7 +1406,7 @@ function ToolPart(props: { last: boolean; part: ToolPart; message: AssistantMess
       return props.part.state.status === "completed" ? props.part.state.output : undefined
     },
     get permission() {
-      const permissions = sync.data.permission[props.message.sessionID] ?? []
+      const permissions = sync.data.permission?.[props.message.sessionID] ?? []
       const permissionIndex = permissions.findIndex((x) => x.tool?.callID === props.part.callID)
       return permissions[permissionIndex]
     },
@@ -1515,7 +1515,7 @@ function InlineTool(props: {
   const sync = useSync()
 
   const permission = createMemo(() => {
-    const callID = sync.data.permission[ctx.sessionID]?.at(0)?.tool?.callID
+    const callID = sync.data.permission?.[ctx.sessionID]?.at(0)?.tool?.callID
     if (!callID) return false
     return callID === props.part.callID
   })
@@ -1831,9 +1831,9 @@ function Task(props: ToolProps<typeof TaskTool>) {
 
   const tools = createMemo(() => {
     const sessionID = props.metadata.sessionId
-    const msgs = sync.data.message[sessionID ?? ""] ?? []
+    const msgs = sync.data.message?.[sessionID ?? ""] ?? []
     return msgs.flatMap((msg) =>
-      (sync.data.part[msg.id] ?? [])
+      (sync.data.part?.[msg.id] ?? [])
         .filter((part): part is ToolPart => part.type === "tool")
         .map((part) => ({ tool: part.tool, state: part.state })),
     )

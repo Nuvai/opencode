@@ -34,7 +34,7 @@ export function Header() {
   const route = useRouteData("session")
   const sync = useSync()
   const session = createMemo(() => sync.session.get(route.sessionID)!)
-  const messages = createMemo(() => sync.data.message[route.sessionID] ?? [])
+  const messages = createMemo(() => sync.data.message?.[route.sessionID] ?? [])
 
   const cost = createMemo(() => {
     const total = pipe(

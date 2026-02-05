@@ -112,7 +112,7 @@ export function Prompt(props: PromptProps) {
 
   const lastUserMessage = createMemo(() => {
     if (!props.sessionID) return undefined
-    const messages = sync.data.message[props.sessionID]
+    const messages = sync.data.message?.[props.sessionID]
     if (!messages) return undefined
     return messages.findLast((m) => m.role === "user")
   })
