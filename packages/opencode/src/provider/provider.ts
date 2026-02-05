@@ -192,6 +192,7 @@ export namespace Provider {
         options: {
           baseURL,
           headers: {
+            "anthropic-version": "2023-06-01",
             "anthropic-beta":
               "claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14",
           },
