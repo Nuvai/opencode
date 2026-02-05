@@ -365,6 +365,14 @@ export const AuthLoginCommand = cmd({
           )
         }
 
+        if (provider === "azure-anthropic") {
+          prompts.log.info(
+            "Azure Anthropic requires a resource name to construct the endpoint URL.\n" +
+              "You can find this in the Azure portal under your Azure OpenAI resource.\n" +
+              "The endpoint will be: https://{resource-name}.openai.azure.com/anthropic/v1",
+          )
+        }
+
         if (provider === "litellm") {
           prompts.log.info(
             "LiteLLM is a proxy that provides a unified API for multiple LLM providers.\n" +
@@ -383,7 +391,7 @@ export const AuthLoginCommand = cmd({
         })
 
         // Handle Azure resource name configuration
-        if (provider === "azure" || provider === "azure-cognitive-services") {
+        if (provider === "azure" || provider === "azure-cognitive-services" || provider === "azure-anthropic") {
           const resourceName = await prompts.text({
             message: "Enter your Azure resource name (e.g., my-openai-resource)",
             placeholder: "my-openai-resource",
@@ -394,7 +402,9 @@ export const AuthLoginCommand = cmd({
           const baseURL =
             provider === "azure-cognitive-services"
               ? `https://${resourceName}.cognitiveservices.azure.com/openai`
-              : `https://${resourceName}.openai.azure.com`
+              : provider === "azure-anthropic"
+                ? `https://${resourceName}.openai.azure.com/anthropic/v1`
+                : `https://${resourceName}.openai.azure.com`
 
           await Config.updateGlobal({
             provider: {

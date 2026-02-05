@@ -388,6 +388,72 @@ If you encounter "I'm sorry, but I cannot assist with that request" errors, try 
 
 ---
 
+### Azure Anthropic
+
+Azure OpenAI Service now supports Anthropic Claude models through their platform. This allows you to use Claude models with Azure's enterprise features and compliance.
+
+1. Head over to the [Azure portal](https://portal.azure.com/) and create an **Azure OpenAI** resource. You'll need:
+   - **Resource name**: This becomes part of your API endpoint (`https://{resource-name}.openai.azure.com/anthropic/v1`)
+   - **API key**: Either `KEY 1` or `KEY 2` from your resource
+
+2. Go to [Azure AI Foundry](https://ai.azure.com/) and deploy a Claude model (e.g., `claude-sonnet-4-20250514`, `claude-3-5-sonnet-20241022`).
+
+   :::note
+   The deployment name must match the model name for opencode to work properly.
+   :::
+
+3. Run the `/connect` command and search for **Azure Anthropic**.
+
+   ```txt
+   /connect
+   ```
+
+4. Enter your API key.
+
+   ```txt
+   ┌ API key
+   │
+   │
+   └ enter
+   ```
+
+5. Enter your resource name when prompted, or set it as an environment variable:
+
+   ```bash
+   AZURE_ANTHROPIC_RESOURCE_NAME=my-resource opencode
+   ```
+
+   Or add it to your bash profile:
+
+   ```bash title="~/.bash_profile"
+   export AZURE_ANTHROPIC_RESOURCE_NAME=my-resource
+   ```
+
+6. Run the `/models` command to select your deployed Claude model.
+
+   ```txt
+   /models
+   ```
+
+#### Configuration File
+
+You can also configure Azure Anthropic directly in your config file:
+
+```json title="opencode.json"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "azure-anthropic": {
+      "options": {
+        "baseURL": "https://my-resource.openai.azure.com/anthropic/v1"
+      }
+    }
+  }
+}
+```
+
+---
+
 ### Baseten
 
 1. Head over to the [Baseten](https://app.baseten.co/), create an account, and generate an API key.
