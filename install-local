@@ -76,6 +76,12 @@ fi
 
 chmod +x "$INSTALL_DIR/opencode"
 
+# macOS: Clear quarantine flag to prevent "damaged" error
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    echo -e "${MUTED}Clearing macOS quarantine flag...${NC}"
+    xattr -cr "$INSTALL_DIR/opencode" 2>/dev/null || true
+fi
+
 # Verify installation
 if [[ -x "$INSTALL_DIR/opencode" ]]; then
     VERSION=$("$INSTALL_DIR/opencode" --version 2>/dev/null || echo "unknown")
