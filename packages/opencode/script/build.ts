@@ -3,6 +3,7 @@
 import solidPlugin from "../node_modules/@opentui/solid/scripts/solid-plugin"
 import path from "path"
 import fs from "fs"
+import os from "os"
 import { $ } from "bun"
 import { fileURLToPath } from "url"
 
@@ -188,6 +189,72 @@ if (Script.release) {
     }
   }
   await $`gh release upload v${Script.version} ./dist/*.zip ./dist/*.tar.gz --clobber`
+}
+
+// Create symlink for local builds (--single flag) so opencode is available in $PATH
+if (singleFlag && targets.length > 0) {
+  const target = targets[0]
+  const name = [
+    pkg.name,
+    target.os === "win32" ? "windows" : target.os,
+    target.arch,
+    target.avx2 === false ? "baseline" : undefined,
+    target.abi === undefined ? undefined : target.abi,
+  ]
+    .filter(Boolean)
+    .join("-")
+
+  const binaryName = target.os === "win32" ? "opencode.exe" : "opencode"
+  const binaryPath = path.resolve(dir, `dist/${name}/bin/${binaryName}`)
+
+  if (target.os === "win32") {
+    // Windows: Create a cmd wrapper in a common location
+    const userProfile = process.env.USERPROFILE || os.homedir()
+    const binDir = path.join(userProfile, ".local", "bin")
+    const wrapperPath = path.join(binDir, "opencode.cmd")
+
+    try {
+      await $`mkdir -p ${binDir}`.quiet()
+      const wrapperContent = `@echo off\r\n"${binaryPath}" %*\r\n`
+      await Bun.write(wrapperPath, wrapperContent)
+      console.log(`\n✓ Created wrapper at: ${wrapperPath}`)
+      console.log(`  Add ${binDir} to your PATH if not already present`)
+    } catch (e) {
+      console.log(`\n⚠ Could not create wrapper: ${e}`)
+    }
+  } else {
+    // macOS/Linux: Create symlink in ~/.local/bin (modern standard)
+    const homeDir = os.homedir()
+    const binDir = path.join(homeDir, ".local", "bin")
+    const symlinkPath = path.join(binDir, "opencode")
+
+    try {
+      // Ensure ~/.local/bin exists
+      await $`mkdir -p ${binDir}`.quiet()
+
+      // Remove existing symlink if present
+      if (fs.existsSync(symlinkPath)) {
+        await $`rm -f ${symlinkPath}`.quiet()
+      }
+
+      // Create symlink
+      await $`ln -s ${binaryPath} ${symlinkPath}`.quiet()
+      console.log(`\n✓ Created symlink: ${symlinkPath} -> ${binaryPath}`)
+
+      // Check if ~/.local/bin is in PATH
+      const pathEnv = process.env.PATH || ""
+      if (!pathEnv.includes(binDir)) {
+        const shell = process.env.SHELL || "/bin/bash"
+        const rcFile = shell.includes("zsh") ? "~/.zshrc" : "~/.bashrc"
+        console.log(`\n⚠ ${binDir} is not in your PATH`)
+        console.log(`  Add this to your ${rcFile}:`)
+        console.log(`  export PATH="$HOME/.local/bin:$PATH"`)
+      }
+    } catch (e) {
+      console.log(`\n⚠ Could not create symlink: ${e}`)
+      console.log(`  You can manually run: ln -s ${binaryPath} ${symlinkPath}`)
+    }
+  }
 }
 
 export { binaries }
