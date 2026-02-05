@@ -98,7 +98,7 @@ async function getTerminalBackgroundColor(): Promise<"dark" | "light"> {
     timeout = setTimeout(() => {
       cleanup()
       resolve("dark")
-    }, 1000)
+    }, 300) // Reduced from 1000ms for faster startup on unresponsive terminals
   })
 }
 

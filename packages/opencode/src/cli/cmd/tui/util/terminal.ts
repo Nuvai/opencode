@@ -23,35 +23,52 @@ export namespace Terminal {
     // Force enable flag overrides auto-detection (for testing)
     if (Flag.OPENCODE_FORCE_TERMINAL_QUERIES) return false
 
-    // Check if on macOS
-    if (process.platform !== "darwin") return false
-
-    // Get Darwin kernel version (maps to macOS version)
-    // Darwin 25.x = macOS 26.x (Tahoe) - released Sep 2025
-    // Darwin 24.x = macOS 15.x (Sequoia) - released Sep 2024
-    // Darwin 23.x = macOS 14.x (Sonoma) - released Sep 2023
-    // Darwin 22.x = macOS 13.x (Ventura) - released Oct 2022
-    const release = os.release()
-    const majorVersion = parseInt(release.split(".")[0], 10)
-
-    // Skip on macOS Tahoe (Darwin 25.x) due to known OSC response issues
-    // affecting Terminal.app, Ghostty, Cursor terminal
-    // See: https://github.com/anthropics/claude-code/issues/12910
-    if (majorVersion >= 25) {
-      return true
-    }
-
-    // Check for specific terminal emulators with known issues
     const termProgram = process.env.TERM_PROGRAM?.toLowerCase() || ""
+    const term = process.env.TERM?.toLowerCase() || ""
 
-    // Ghostty has been reported to have OSC response issues on Sequoia
-    if (termProgram.includes("ghostty") && majorVersion >= 24) {
-      return true
+    // Linux: Skip on terminals known to have issues or limited OSC support
+    if (process.platform === "linux") {
+      // Skip on basic/dumb terminals that don't support OSC
+      if (term === "dumb" || term === "linux" || !term) {
+        return true
+      }
+      // Skip on SSH sessions (often have issues with OSC queries)
+      if (process.env.SSH_CLIENT || process.env.SSH_TTY) {
+        return true
+      }
+      // VS Code integrated terminal on Linux can have issues
+      if (termProgram.includes("vscode")) {
+        return true
+      }
+      return false
     }
 
-    // Cursor integrated terminal has issues on recent macOS
-    if (termProgram.includes("cursor") && majorVersion >= 24) {
-      return true
+    // macOS detection
+    if (process.platform === "darwin") {
+      // Get Darwin kernel version (maps to macOS version)
+      // Darwin 25.x = macOS 26.x (Tahoe) - released Sep 2025
+      // Darwin 24.x = macOS 15.x (Sequoia) - released Sep 2024
+      // Darwin 23.x = macOS 14.x (Sonoma) - released Sep 2023
+      // Darwin 22.x = macOS 13.x (Ventura) - released Oct 2022
+      const release = os.release()
+      const majorVersion = parseInt(release.split(".")[0], 10)
+
+      // Skip on macOS Tahoe (Darwin 25.x) due to known OSC response issues
+      // affecting Terminal.app, Ghostty, Cursor terminal
+      // See: https://github.com/anthropics/claude-code/issues/12910
+      if (majorVersion >= 25) {
+        return true
+      }
+
+      // Ghostty has been reported to have OSC response issues on Sequoia
+      if (termProgram.includes("ghostty") && majorVersion >= 24) {
+        return true
+      }
+
+      // Cursor integrated terminal has issues on recent macOS
+      if (termProgram.includes("cursor") && majorVersion >= 24) {
+        return true
+      }
     }
 
     return false
@@ -154,7 +171,7 @@ export namespace Terminal {
       timeout = setTimeout(() => {
         cleanup()
         resolve({ background, foreground, colors: paletteColors })
-      }, 1000)
+      }, 300) // Reduced from 1000ms for faster startup
     })
   }
 
