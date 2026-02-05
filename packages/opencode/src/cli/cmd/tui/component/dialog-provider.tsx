@@ -36,17 +36,17 @@ export function createDialogProviderOptions() {
     return pipe(
       sync.data.provider_next.all,
       sortBy((x) => PROVIDER_PRIORITY[x.id] ?? 99),
-       map((provider) => {
-         const isConnected = connected().has(provider.id)
-         return {
-           title: PROVIDER_DISPLAY_NAMES[provider.id] ?? provider.name,
-           value: provider.id,
-            description: {
-             opencode: "(Recommended)",
-             "azure-anthropic": "(Nuvai)",
-             anthropic: "(Claude Max or API key)",
-             openai: "(ChatGPT Plus/Pro or API key)",
-           }[provider.id],
+      map((provider) => {
+        const isConnected = connected().has(provider.id)
+        return {
+          title: PROVIDER_DISPLAY_NAMES[provider.id] ?? provider.name,
+          value: provider.id,
+          description: {
+            opencode: "(Recommended)",
+            "azure-anthropic": undefined,
+            anthropic: "(Claude Max or API key)",
+            openai: "(ChatGPT Plus/Pro or API key)",
+          }[provider.id],
           category: provider.id in PROVIDER_PRIORITY ? "Popular" : "Other",
           footer: isConnected ? "Connected" : undefined,
           async onSelect() {
