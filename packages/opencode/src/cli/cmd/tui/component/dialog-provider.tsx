@@ -16,10 +16,11 @@ import { useToast } from "../ui/toast"
 
 const PROVIDER_PRIORITY: Record<string, number> = {
   opencode: 0,
-  anthropic: 1,
-  "github-copilot": 2,
-  openai: 3,
-  google: 4,
+  "azure-anthropic": 1,
+  anthropic: 2,
+  "github-copilot": 3,
+  openai: 4,
+  google: 5,
 }
 
 export function createDialogProviderOptions() {
@@ -36,11 +37,12 @@ export function createDialogProviderOptions() {
         return {
           title: provider.name,
           value: provider.id,
-          description: {
-            opencode: "(Recommended)",
-            anthropic: "(Claude Max or API key)",
-            openai: "(ChatGPT Plus/Pro or API key)",
-          }[provider.id],
+           description: {
+             opencode: "(Recommended)",
+             "azure-anthropic": "(Claude via Azure)",
+             anthropic: "(Claude Max or API key)",
+             openai: "(ChatGPT Plus/Pro or API key)",
+           }[provider.id],
           category: provider.id in PROVIDER_PRIORITY ? "Popular" : "Other",
           footer: isConnected ? "Connected" : undefined,
           async onSelect() {

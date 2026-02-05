@@ -1090,7 +1090,22 @@ export namespace Provider {
   })
 
   export async function list() {
-    return state().then((state) => state.providers)
+    const providers = await state().then((state) => state.providers)
+    
+    // Prioritize popular providers: Azure Anthropic first, then others by name
+    const priorityOrder = ["azure-anthropic", "opencode", "anthropic", "openai", "github-copilot"]
+    const sorted = Object.fromEntries(
+      Object.entries(providers).sort(([idA], [idB]) => {
+        const indexA = priorityOrder.indexOf(idA)
+        const indexB = priorityOrder.indexOf(idB)
+        if (indexA >= 0 && indexB >= 0) return indexA - indexB
+        if (indexA >= 0) return -1
+        if (indexB >= 0) return 1
+        return providers[idA].name.localeCompare(providers[idB].name)
+      })
+    )
+    
+    return sorted
   }
 
   async function getSDK(model: Model) {
