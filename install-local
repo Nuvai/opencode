@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+#
+# OpenCode Local Installation Script
+#
+# Usage:
+#   ./install-local /path/to/opencode-darwin-arm64.zip
+#   ./install-local https://example.com/opencode-darwin-arm64.zip
+#   curl -fsSL https://raw.githubusercontent.com/Nuvai/opencode/main/install-local | bash -s -- <file-or-url>
+#
+# Options (via environment variables):
+#   OPENCODE_INSTALL_DIR  - Override installation directory (default: ~/.opencode/bin)
+#
+
+set -euo pipefail
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+MUTED='\033[0;2m'
+NC='\033[0m'
+
+INSTALL_DIR="${OPENCODE_INSTALL_DIR:-$HOME/.opencode/bin}"
+
+usage() {
+    cat <<EOF
+OpenCode Local Installer
+
+Usage: install-local <file-or-url>
+
+Arguments:
+    file-or-url    Path to local zip/tar.gz file OR download URL
+
+Examples:
+    ./install-local ~/Downloads/opencode-darwin-arm64.zip
+    ./install-local https://example.com/opencode-linux-x64.tar.gz
+    curl -fsSL https://raw.githubusercontent.com/Nuvai/opencode/main/install-local | bash -s -- <url>
+
+Environment Variables:
+    OPENCODE_INSTALL_DIR    Installation directory (default: ~/.opencode/bin)
+EOF
+}
+
+if [[ $# -lt 1 ]] || [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+    usage
+    exit 0
+fi
+
+INPUT="$1"
+TEMP_FILE=""
+
+mkdir -p "$INSTALL_DIR"
+
+# Determine if input is local file or URL
+if [[ -f "$INPUT" ]]; then
+    echo -e "${MUTED}Installing from local file:${NC} $INPUT"
+    FILE="$INPUT"
+elif [[ "$INPUT" == http* ]]; then
+    echo -e "${MUTED}Downloading from:${NC} $INPUT"
+    TEMP_FILE="/tmp/opencode-download-$$"
+    curl -fsSL --progress-bar -o "$TEMP_FILE" "$INPUT"
+    FILE="$TEMP_FILE"
+else
+    echo -e "${RED}Error: '$INPUT' is not a valid file or URL${NC}"
+    exit 1
+fi
+
+# Extract based on extension
+echo -e "${MUTED}Extracting...${NC}"
+if [[ "$FILE" == *.tar.gz ]] || [[ "$INPUT" == *.tar.gz ]]; then
+    tar -xzf "$FILE" -C "$INSTALL_DIR"
+else
+    unzip -o -q "$FILE" -d "$INSTALL_DIR"
+fi
+
+# Cleanup temp file if created
+[[ -n "$TEMP_FILE" ]] && rm -f "$TEMP_FILE"
+
+chmod +x "$INSTALL_DIR/opencode"
+
+# Verify installation
+if [[ -x "$INSTALL_DIR/opencode" ]]; then
+    VERSION=$("$INSTALL_DIR/opencode" --version 2>/dev/null || echo "unknown")
+    echo ""
+    echo -e "${GREEN}✓${NC} Installed opencode ${MUTED}v${VERSION}${NC} to ${INSTALL_DIR}/opencode"
+    echo ""
+
+    # Check if already in PATH
+    if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
+        echo -e "${MUTED}Add to your shell profile:${NC}"
+        echo ""
+        echo "  export PATH=\"$INSTALL_DIR:\$PATH\""
+        echo ""
+    else
+        echo -e "Run ${GREEN}opencode${NC} to get started!"
+    fi
+else
+    echo -e "${RED}Error: Installation failed${NC}"
+    exit 1
+fi
