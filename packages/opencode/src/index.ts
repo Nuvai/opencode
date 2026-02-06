@@ -26,6 +26,9 @@ import { EOL } from "os"
 import { WebCommand } from "./cli/cmd/web"
 import { PrCommand } from "./cli/cmd/pr"
 import { SessionCommand } from "./cli/cmd/session"
+import { Config } from "./config/config"
+import { Global } from "./global"
+import path from "path"
 
 process.on("unhandledRejection", (e) => {
   Log.Default.error("rejection", {
@@ -74,6 +77,34 @@ const cli = yargs(hideBin(process.argv))
       version: Installation.VERSION,
       args: process.argv.slice(2),
     })
+
+    // Ensure ~/.opencode directory is initialized on first launch
+    // This sets up package.json with @opencode-ai/plugin dependency
+    // allowing custom tools to load their dependencies
+    const homeOpencodePath = path.join(Global.Path.home, ".opencode")
+    const pkgPath = path.join(homeOpencodePath, "package.json")
+    const hasPackageJson = await Bun.file(pkgPath).exists()
+    if (!hasPackageJson) {
+      try {
+        await Bun.$`mkdir -p ${homeOpencodePath}`
+      } catch {
+        // Directory may already exist
+      }
+      // Create initial package.json with plugin dependency
+      const pkg = {
+        name: "opencode-config",
+        version: "1.0.0",
+        description: "OpenCode configuration and custom tools",
+        private: true,
+        dependencies: {
+          "@opencode-ai/plugin": Installation.VERSION,
+        },
+      }
+      await Bun.write(pkgPath, JSON.stringify(pkg, null, 2))
+      Log.Default.info("initialized ~/.opencode with package.json", {
+        path: homeOpencodePath,
+      })
+    }
   })
   .usage("\n" + UI.logo())
   .completion("completion", "generate shell completion script")
