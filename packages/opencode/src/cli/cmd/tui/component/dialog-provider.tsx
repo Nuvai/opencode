@@ -253,6 +253,69 @@ function ApiMethod(props: ApiMethodProps) {
             key: value,
           },
         })
+        // For Azure providers, prompt for resource name to construct the URL
+        if (props.providerID === "azure-anthropic" || props.providerID === "azure" || props.providerID === "azure-cognitive-services") {
+          dialog.replace(() => <AzureResourceMethod providerID={props.providerID} />)
+          return
+        }
+        await sdk.client.instance.dispose()
+        await sync.bootstrap()
+        dialog.replace(() => <DialogModel providerID={props.providerID} />)
+      }}
+    />
+  )
+}
+
+interface AzureResourceMethodProps {
+  providerID: string
+}
+function AzureResourceMethod(props: AzureResourceMethodProps) {
+  const dialog = useDialog()
+  const sdk = useSDK()
+  const sync = useSync()
+  const { theme } = useTheme()
+
+  const placeholder = props.providerID === "azure-anthropic"
+    ? "e.g., my-anthropic-resource"
+    : "e.g., my-openai-resource"
+
+  const description = props.providerID === "azure-anthropic"
+    ? "Find this in Azure portal under your Azure OpenAI resource"
+    : "Find this in Azure portal under your Azure OpenAI resource"
+
+  return (
+    <DialogPrompt
+      title="Azure Resource Name"
+      placeholder={placeholder}
+      description={
+        <box gap={1}>
+          <text fg={theme.textMuted}>{description}</text>
+          <text fg={theme.text}>
+            Endpoint: <span style={{ fg: theme.primary }}>https://{"<resource-name>"}.openai.azure.com</span>
+          </text>
+        </box>
+      }
+      onConfirm={async (value) => {
+        if (!value) return
+        const resourceName = value.trim()
+        const baseURL =
+          props.providerID === "azure-cognitive-services"
+            ? `https://${resourceName}.cognitiveservices.azure.com/openai`
+            : props.providerID === "azure-anthropic"
+              ? `https://${resourceName}.openai.azure.com/anthropic/v1`
+              : `https://${resourceName}.openai.azure.com`
+
+        await sdk.client.global.config.update({
+          config: {
+            provider: {
+              [props.providerID]: {
+                options: {
+                  baseURL,
+                },
+              },
+            },
+          },
+        })
         await sdk.client.instance.dispose()
         await sync.bootstrap()
         dialog.replace(() => <DialogModel providerID={props.providerID} />)
