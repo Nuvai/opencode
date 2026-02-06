@@ -17,14 +17,16 @@ import { useToast } from "../ui/toast"
 const PROVIDER_PRIORITY: Record<string, number> = {
   opencode: 0,
   "azure-anthropic": 1,
-  anthropic: 2,
-  "github-copilot": 3,
-  openai: 4,
-  google: 5,
+  "azure-ai": 2,
+  anthropic: 3,
+  "github-copilot": 4,
+  openai: 5,
+  google: 6,
 }
 
 const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   "azure-anthropic": "Azure Anthropic (Nuvai)",
+  "azure-ai": "Azure AI (Nuvai)",
 }
 
 export function createDialogProviderOptions() {
@@ -254,7 +256,7 @@ function ApiMethod(props: ApiMethodProps) {
           },
         })
         // For Azure providers, prompt for resource name to construct the URL
-        if (props.providerID === "azure-anthropic" || props.providerID === "azure" || props.providerID === "azure-cognitive-services") {
+        if (props.providerID === "azure-anthropic" || props.providerID === "azure-ai" || props.providerID === "azure" || props.providerID === "azure-cognitive-services") {
           dialog.replace(() => <AzureResourceMethod providerID={props.providerID} />)
           return
         }
@@ -303,7 +305,9 @@ function AzureResourceMethod(props: AzureResourceMethodProps) {
             ? `https://${resourceName}.cognitiveservices.azure.com/openai`
             : props.providerID === "azure-anthropic"
               ? `https://${resourceName}.openai.azure.com/anthropic/v1`
-              : `https://${resourceName}.openai.azure.com`
+              : props.providerID === "azure-ai"
+                ? `https://${resourceName}.services.ai.azure.com/models`
+                : `https://${resourceName}.openai.azure.com`
 
         await sdk.client.global.config.update({
           config: {

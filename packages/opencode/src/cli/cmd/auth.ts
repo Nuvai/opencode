@@ -377,7 +377,7 @@ export const AuthLoginCommand = cmd({
         })
 
         // Handle Azure resource name configuration
-        if (provider === "azure" || provider === "azure-cognitive-services" || provider === "azure-anthropic") {
+        if (provider === "azure" || provider === "azure-cognitive-services" || provider === "azure-anthropic" || provider === "azure-ai") {
           const resourceName = await prompts.text({
             message: "Enter your Azure resource name (e.g., my-openai-resource)",
             placeholder: "my-openai-resource",
@@ -390,7 +390,9 @@ export const AuthLoginCommand = cmd({
               ? `https://${resourceName.trim()}.cognitiveservices.azure.com/openai`
               : provider === "azure-anthropic"
                 ? `https://${resourceName.trim()}.openai.azure.com/anthropic/v1`
-                : `https://${resourceName.trim()}.openai.azure.com`
+                : provider === "azure-ai"
+                  ? `https://${resourceName.trim()}.services.ai.azure.com/models`
+                  : `https://${resourceName.trim()}.openai.azure.com`
 
           await Config.updateGlobal({
             provider: {

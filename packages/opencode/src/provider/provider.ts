@@ -201,6 +201,22 @@ export namespace Provider {
         },
       }
     },
+    "azure-ai": async () => {
+      const config = await Config.get()
+      const providerConfig = config.provider?.["azure-ai"]
+      const resourceName = Env.get("AZURE_AI_RESOURCE_NAME")
+
+      // Get baseURL from config (set by TUI or CLI) or construct from resource name env var
+      const baseURL = providerConfig?.options?.baseURL ??
+        (resourceName ? `https://${resourceName}.services.ai.azure.com/models` : undefined)
+
+      return {
+        autoload: false,
+        options: {
+          baseURL,
+        },
+      }
+    },
     "amazon-bedrock": async () => {
       const config = await Config.get()
       const providerConfig = config.provider?.["amazon-bedrock"]
@@ -796,10 +812,58 @@ export namespace Provider {
       }
     }
 
+    if (!database["azure-ai"]) {
+      const azureAIModels: Record<string, Model> = {
+        "DeepSeek-R1": {
+          id: "DeepSeek-R1",
+          providerID: "azure-ai",
+          name: "DeepSeek R1",
+          family: "deepseek",
+          api: {
+            id: "DeepSeek-R1",
+            url: "",
+            npm: "@ai-sdk/openai-compatible",
+          },
+          status: "active",
+          headers: {},
+          options: {},
+          cost: { input: 0.55, output: 2.19, cache: { read: 0.14, write: 0.55 } },
+          limit: { context: 65536, output: 8192 },
+          capabilities: {
+            temperature: true,
+            reasoning: true,
+            attachment: false,
+            toolcall: false,
+            input: { text: true, audio: false, image: false, video: false, pdf: false },
+            output: { text: true, audio: false, image: false, video: false, pdf: false },
+            interleaved: false,
+          },
+          release_date: "2025-01-20",
+          variants: {},
+        },
+      }
+      database["azure-ai"] = {
+        id: "azure-ai",
+        name: "Azure AI (Nuvai)",
+        source: "custom",
+        env: ["AZURE_AI_API_KEY"],
+        options: {},
+        models: azureAIModels,
+      }
+    }
+
     // Ensure azure-anthropic is always available for discovery, even without auth
     if (database["azure-anthropic"] && !providers["azure-anthropic"]) {
       providers["azure-anthropic"] = {
         ...database["azure-anthropic"],
+        source: "custom",
+      }
+    }
+
+    // Ensure azure-ai is always available for discovery, even without auth
+    if (database["azure-ai"] && !providers["azure-ai"]) {
+      providers["azure-ai"] = {
+        ...database["azure-ai"],
         source: "custom",
       }
     }
