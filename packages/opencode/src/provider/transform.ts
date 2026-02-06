@@ -630,6 +630,18 @@ export namespace ProviderTransform {
       }
     }
 
+    // Enable thinking by default for kimi-k2.5/k2p5 models using anthropic SDK
+    const modelId = input.model.api.id.toLowerCase()
+    if (
+      (input.model.api.npm === "@ai-sdk/anthropic" || input.model.api.npm === "@ai-sdk/google-vertex/anthropic") &&
+      (modelId.includes("k2p5") || modelId.includes("kimi-k2.5") || modelId.includes("kimi-k2p5"))
+    ) {
+      result["thinking"] = {
+        type: "enabled",
+        budgetTokens: Math.min(16_000, Math.floor(input.model.limit.output / 2 - 1)),
+      }
+    }
+
     if (input.model.api.id.includes("gpt-5") && !input.model.api.id.includes("gpt-5-chat")) {
       if (!input.model.api.id.includes("gpt-5-pro")) {
         result["reasoningEffort"] = "medium"
@@ -807,6 +819,23 @@ export namespace ProviderTransform {
         message +
         "\n\nMake sure the model is enabled in your copilot settings: https://github.com/settings/copilot/features"
       )
+    }
+
+    // Add endpoint info for Azure Anthropic errors
+    // Add endpoint info for Azure Anthropic errors
+    if (providerID === "azure-anthropic") {
+      const resourceName = process.env.AZURE_ANTHROPIC_RESOURCE_NAME || "nuvai-resource"
+      const endpoint = `https://${resourceName}.openai.azure.com/anthropic/v1/messages`
+
+      message += `\n\nTarget Endpoint: ${endpoint}`
+      if (error.statusCode) {
+        message += `\nStatus Code: ${error.statusCode}`
+      }
+      // @ts-ignore
+      if (error.responseBody) {
+        // @ts-ignore
+        message += `\nResponse: ${error.responseBody}`
+      }
     }
 
     return message

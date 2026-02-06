@@ -352,19 +352,6 @@ export const AuthLoginCommand = cmd({
           prompts.log.info("You can create an api key at https://vercel.link/ai-gateway-token")
         }
 
-        if (["cloudflare", "cloudflare-ai-gateway"].includes(provider)) {
-          prompts.log.info(
-            "Cloudflare AI Gateway can be configured with CLOUDFLARE_GATEWAY_ID, CLOUDFLARE_ACCOUNT_ID, and CLOUDFLARE_API_TOKEN environment variables. Read more: https://opencode.ai/docs/providers/#cloudflare-ai-gateway",
-          )
-        }
-
-        if (provider === "azure" || provider === "azure-cognitive-services") {
-          prompts.log.info(
-            "Azure OpenAI requires a resource name to construct the endpoint URL.\n" +
-              "You can find this in the Azure portal under your Azure OpenAI resource.",
-          )
-        }
-
         if (provider === "azure-anthropic") {
           prompts.log.info(
             "Azure Anthropic requires a resource name to construct the endpoint URL.\n" +
@@ -373,10 +360,9 @@ export const AuthLoginCommand = cmd({
           )
         }
 
-        if (provider === "litellm") {
+        if (["cloudflare", "cloudflare-ai-gateway"].includes(provider)) {
           prompts.log.info(
-            "LiteLLM is a proxy that provides a unified API for multiple LLM providers.\n" +
-              "You'll be asked for the API key and proxy URL after this step.",
+            "Cloudflare AI Gateway can be configured with CLOUDFLARE_GATEWAY_ID, CLOUDFLARE_ACCOUNT_ID, and CLOUDFLARE_API_TOKEN environment variables. Read more: https://opencode.ai/docs/providers/#cloudflare-ai-gateway",
           )
         }
 
@@ -387,7 +373,7 @@ export const AuthLoginCommand = cmd({
         if (prompts.isCancel(key)) throw new UI.CancelledError()
         await Auth.set(provider, {
           type: "api",
-          key,
+          key: key.trim(),
         })
 
         // Handle Azure resource name configuration
@@ -401,10 +387,10 @@ export const AuthLoginCommand = cmd({
 
           const baseURL =
             provider === "azure-cognitive-services"
-              ? `https://${resourceName}.cognitiveservices.azure.com/openai`
+              ? `https://${resourceName.trim()}.cognitiveservices.azure.com/openai`
               : provider === "azure-anthropic"
-                ? `https://${resourceName}.openai.azure.com/anthropic/v1`
-                : `https://${resourceName}.openai.azure.com`
+                ? `https://${resourceName.trim()}.openai.azure.com/anthropic/v1`
+                : `https://${resourceName.trim()}.openai.azure.com`
 
           await Config.updateGlobal({
             provider: {
@@ -415,39 +401,6 @@ export const AuthLoginCommand = cmd({
               },
             },
           })
-          prompts.log.success(`Configured baseURL: ${baseURL}`)
-        }
-
-        // Handle LiteLLM base URL configuration
-        if (provider === "litellm") {
-          const baseURL = await prompts.text({
-            message: "Enter your LiteLLM proxy URL",
-            placeholder: "http://localhost:4000",
-            defaultValue: "http://localhost:4000",
-            validate: (x) => {
-              if (!x || x.length === 0) return undefined // Allow empty for default
-              try {
-                new URL(x)
-                return undefined
-              } catch {
-                return "Please enter a valid URL"
-              }
-            },
-          })
-          if (prompts.isCancel(baseURL)) throw new UI.CancelledError()
-
-          if (baseURL && baseURL !== "http://localhost:4000") {
-            await Config.updateGlobal({
-              provider: {
-                litellm: {
-                  options: {
-                    baseURL: `${baseURL}/v1`,
-                  },
-                },
-              },
-            })
-            prompts.log.success(`Configured baseURL: ${baseURL}/v1`)
-          }
         }
 
         prompts.outro("Done")

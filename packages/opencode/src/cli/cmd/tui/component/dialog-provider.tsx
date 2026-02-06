@@ -17,10 +17,15 @@ import { useLocal } from "@tui/context/local"
 
 const PROVIDER_PRIORITY: Record<string, number> = {
   opencode: 0,
-  anthropic: 1,
-  "github-copilot": 2,
-  openai: 3,
-  google: 4,
+  "azure-anthropic": 1,
+  anthropic: 2,
+  "github-copilot": 3,
+  openai: 4,
+  google: 5,
+}
+
+const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
+  "azure-anthropic": "Azure Anthropic (Nuvai)",
 }
 
 export function createDialogProviderOptions() {
@@ -43,10 +48,11 @@ export function createDialogProviderOptions() {
         const isConnected = connected().has(provider.id)
         const isRecent = recents.includes(provider.id)
         return {
-          title: provider.name,
+          title: PROVIDER_DISPLAY_NAMES[provider.id] ?? provider.name,
           value: provider.id,
           description: {
             opencode: "(Recommended)",
+            "azure-anthropic": undefined,
             anthropic: "(Claude Max or API key)",
             openai: "(ChatGPT Plus/Pro or API key)",
           }[provider.id],

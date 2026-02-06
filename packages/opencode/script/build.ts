@@ -3,7 +3,6 @@
 import solidPlugin from "../node_modules/@opentui/solid/scripts/solid-plugin"
 import path from "path"
 import fs from "fs"
-import os from "os"
 import { $ } from "bun"
 import { fileURLToPath } from "url"
 
@@ -36,57 +35,14 @@ const allTargets: {
   abi?: "musl"
   avx2?: false
 }[] = [
-  // {
-  //   os: "linux",
-  //   arch: "arm64",
-  // },
   {
     os: "linux",
     arch: "x64",
   },
-  // {
-  //   os: "linux",
-  //   arch: "x64",
-  //   avx2: false,
-  // },
-  // {
-  //   os: "linux",
-  //   arch: "arm64",
-  //   abi: "musl",
-  // },
-  // {
-  //   os: "linux",
-  //   arch: "x64",
-  //   abi: "musl",
-  // },
-  // {
-  //   os: "linux",
-  //   arch: "x64",
-  //   abi: "musl",
-  //   avx2: false,
-  // },
   {
     os: "darwin",
     arch: "arm64",
   },
-  // {
-  //   os: "darwin",
-  //   arch: "x64",
-  // },
-  // {
-  //   os: "darwin",
-  //   arch: "x64",
-  //   avx2: false,
-  // },
-  // {
-  //   os: "win32",
-  //   arch: "x64",
-  // },
-  // {
-  //   os: "win32",
-  //   arch: "x64",
-  //   avx2: false,
-  // },
 ]
 
 const targets = singleFlag
@@ -117,7 +73,6 @@ if (!skipInstall) {
   await $`bun install --os="*" --cpu="*" @opentui/core@${pkg.dependencies["@opentui/core"]}`
   await $`bun install --os="*" --cpu="*" @parcel/watcher@${pkg.dependencies["@parcel/watcher"]}`
 }
-// Build each target sequentially with isolation to prevent cross-compilation crashes
 for (const item of targets) {
   const name = [
     pkg.name,
@@ -139,60 +94,33 @@ for (const item of targets) {
   const bunfsRoot = item.os === "win32" ? "B:/~BUN/root/" : "/$bunfs/root/"
   const workerRelativePath = path.relative(dir, parserWorker).replaceAll("\\", "/")
 
-  // Write build script to temp file and run in subprocess to isolate memory
-  const tmpBuildScript = path.join(os.tmpdir(), `opencode-build-${name}-${Date.now()}.ts`)
-  const buildScript = `
-import solidPlugin from "${path.resolve(dir, "node_modules/@opentui/solid/scripts/solid-plugin")}";
-const result = await Bun.build({
-  conditions: ["browser"],
-  tsconfig: "${path.resolve(dir, "tsconfig.json")}",
-  plugins: [solidPlugin],
-  sourcemap: "external",
-  compile: {
-    autoloadBunfig: false,
-    autoloadDotenv: false,
-    autoloadTsconfig: true,
-    autoloadPackageJson: true,
-    target: "${name.replace(pkg.name, "bun")}",
-    outfile: "${path.resolve(dir, `dist/${name}/bin/opencode`)}",
-    execArgv: ["--user-agent=opencode/${Script.version}", "--use-system-ca", "--"],
-    windows: {},
-  },
-  entrypoints: ["${path.resolve(dir, "src/index.ts")}", "${parserWorker}", "${path.resolve(dir, workerPath)}"],
-  define: {
-    OPENCODE_VERSION: "'${Script.version}'",
-    OTUI_TREE_SITTER_WORKER_PATH: "${bunfsRoot}${workerRelativePath}",
-    OPENCODE_WORKER_PATH: "${workerPath}",
-    OPENCODE_CHANNEL: "'${Script.channel}'",
-    OPENCODE_LIBC: "${item.os === "linux" ? item.abi ?? "glibc" : ""}",
-  },
-});
-if (!result.success) {
-  console.error("Build failed:", result.logs);
-  process.exit(1);
-}
-`
-  await Bun.write(tmpBuildScript, buildScript)
+  await Bun.build({
+    conditions: ["browser"],
+    tsconfig: "./tsconfig.json",
+    plugins: [solidPlugin],
+    sourcemap: "external",
+    compile: {
+      autoloadBunfig: false,
+      autoloadDotenv: false,
+      //@ts-ignore (bun types aren't up to date)
+      autoloadTsconfig: true,
+      autoloadPackageJson: true,
+      target: name.replace(pkg.name, "bun") as any,
+      outfile: `dist/${name}/bin/opencode`,
+      execArgv: [`--user-agent=opencode/${Script.version}`, "--use-system-ca", "--"],
+      windows: {},
+    },
+    entrypoints: ["./src/index.ts", parserWorker, workerPath],
+    define: {
+      OPENCODE_VERSION: `'${Script.version}'`,
+      OTUI_TREE_SITTER_WORKER_PATH: bunfsRoot + workerRelativePath,
+      OPENCODE_WORKER_PATH: workerPath,
+      OPENCODE_CHANNEL: `'${Script.channel}'`,
+      OPENCODE_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
+    },
+  })
 
-  try {
-    const proc = Bun.spawn(["bun", "run", tmpBuildScript], {
-      cwd: dir,
-      stdio: ["inherit", "inherit", "inherit"],
-    })
-    const exitCode = await proc.exited
-    if (exitCode !== 0) {
-      console.error(`Build failed for ${name} with exit code ${exitCode}`)
-      fs.unlinkSync(tmpBuildScript)
-      continue // Skip this target but continue with others
-    }
-  } catch (err) {
-    console.error(`Build crashed for ${name}:`, err)
-    fs.unlinkSync(tmpBuildScript)
-    continue // Skip this target but continue with others
-  }
-
-  fs.unlinkSync(tmpBuildScript)
-  await $`rm -rf ./dist/${name}/bin/tui`.quiet().nothrow()
+  await $`rm -rf ./dist/${name}/bin/tui`
   await Bun.file(`dist/${name}/package.json`).write(
     JSON.stringify(
       {
@@ -206,9 +134,6 @@ if (!result.success) {
     ),
   )
   binaries[name] = Script.version
-
-  // Small delay between builds to let resources settle
-  await Bun.sleep(500)
 }
 
 if (Script.release) {
@@ -219,77 +144,7 @@ if (Script.release) {
       await $`zip -r ../../${key}.zip *`.cwd(`dist/${key}/bin`)
     }
   }
-
-  // Create release if it doesn't exist, then upload assets
-  const repo = process.env.GITHUB_REPOSITORY || "Nuvai/opencode"
-  await $`gh release create v${Script.version} --repo ${repo} --title "v${Script.version}" --notes "Release v${Script.version}" --draft=false`.nothrow()
-  await $`gh release upload v${Script.version} ./dist/*.zip ./dist/*.tar.gz --repo ${repo} --clobber`
-}
-
-// Create symlink for local builds (--single flag) so opencode is available in $PATH
-if (singleFlag && targets.length > 0) {
-  const target = targets[0]
-  const name = [
-    pkg.name,
-    target.os === "win32" ? "windows" : target.os,
-    target.arch,
-    target.avx2 === false ? "baseline" : undefined,
-    target.abi === undefined ? undefined : target.abi,
-  ]
-    .filter(Boolean)
-    .join("-")
-
-  const binaryName = target.os === "win32" ? "opencode.exe" : "opencode"
-  const binaryPath = path.resolve(dir, `dist/${name}/bin/${binaryName}`)
-
-  if (target.os === "win32") {
-    // Windows: Create a cmd wrapper in a common location
-    const userProfile = process.env.USERPROFILE || os.homedir()
-    const binDir = path.join(userProfile, ".local", "bin")
-    const wrapperPath = path.join(binDir, "opencode.cmd")
-
-    try {
-      await $`mkdir -p ${binDir}`.quiet()
-      const wrapperContent = `@echo off\r\n"${binaryPath}" %*\r\n`
-      await Bun.write(wrapperPath, wrapperContent)
-      console.log(`\n✓ Created wrapper at: ${wrapperPath}`)
-      console.log(`  Add ${binDir} to your PATH if not already present`)
-    } catch (e) {
-      console.log(`\n⚠ Could not create wrapper: ${e}`)
-    }
-  } else {
-    // macOS/Linux: Create symlink in ~/.local/bin (modern standard)
-    const homeDir = os.homedir()
-    const binDir = path.join(homeDir, ".local", "bin")
-    const symlinkPath = path.join(binDir, "opencode")
-
-    try {
-      // Ensure ~/.local/bin exists
-      await $`mkdir -p ${binDir}`.quiet()
-
-      // Remove existing symlink if present
-      if (fs.existsSync(symlinkPath)) {
-        await $`rm -f ${symlinkPath}`.quiet()
-      }
-
-      // Create symlink
-      await $`ln -s ${binaryPath} ${symlinkPath}`.quiet()
-      console.log(`\n✓ Created symlink: ${symlinkPath} -> ${binaryPath}`)
-
-      // Check if ~/.local/bin is in PATH
-      const pathEnv = process.env.PATH || ""
-      if (!pathEnv.includes(binDir)) {
-        const shell = process.env.SHELL || "/bin/bash"
-        const rcFile = shell.includes("zsh") ? "~/.zshrc" : "~/.bashrc"
-        console.log(`\n⚠ ${binDir} is not in your PATH`)
-        console.log(`  Add this to your ${rcFile}:`)
-        console.log(`  export PATH="$HOME/.local/bin:$PATH"`)
-      }
-    } catch (e) {
-      console.log(`\n⚠ Could not create symlink: ${e}`)
-      console.log(`  You can manually run: ln -s ${binaryPath} ${symlinkPath}`)
-    }
-  }
+  await $`gh release upload v${Script.version} ./dist/*.zip ./dist/*.tar.gz --clobber`
 }
 
 export { binaries }

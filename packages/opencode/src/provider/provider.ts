@@ -125,7 +125,7 @@ export namespace Provider {
       return {
         autoload: false,
         async getModel(sdk: any, modelID: string, _options?: Record<string, any>) {
-          return sdk.responses ? sdk.responses(modelID) : sdk.languageModel(modelID)
+          return sdk.responses(modelID)
         },
         options: {},
       }
@@ -157,7 +157,7 @@ export namespace Provider {
           if (options?.["useCompletionUrls"]) {
             return sdk.chat(modelID)
           } else {
-            return sdk.responses ? sdk.responses(modelID) : sdk.languageModel(modelID)
+            return sdk.responses(modelID)
           }
         },
         options: {},
@@ -171,7 +171,7 @@ export namespace Provider {
           if (options?.["useCompletionUrls"]) {
             return sdk.chat(modelID)
           } else {
-            return sdk.responses ? sdk.responses(modelID) : sdk.languageModel(modelID)
+            return sdk.responses(modelID)
           }
         },
         options: {
@@ -182,18 +182,18 @@ export namespace Provider {
     "azure-anthropic": async () => {
       const config = await Config.get()
       const providerConfig = config.provider?.["azure-anthropic"]
-      const resourceName = Env.get("AZURE_ANTHROPIC_RESOURCE_NAME")
+      const resourceName = Env.get("AZURE_ANTHROPIC_RESOURCE_NAME") || "nuvai-resource"
 
-      // Get baseURL from config (set by TUI or CLI) or construct from env
+      // Get baseURL from config (set by TUI or CLI) or construct from resource name (defaults to nuvai-resource)
       const baseURL =
-        providerConfig?.options?.baseURL ??
-        (resourceName ? `https://${resourceName}.openai.azure.com/anthropic/v1` : undefined)
+        providerConfig?.options?.baseURL ?? `https://${resourceName}.openai.azure.com/anthropic/v1`
 
       return {
-        autoload: true,
+        autoload: false,
         options: {
           baseURL,
           headers: {
+            "anthropic-version": "2023-06-01",
             "anthropic-beta":
               "claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14",
           },
@@ -478,6 +478,29 @@ export namespace Provider {
         },
       }
     },
+    "cloudflare-workers-ai": async (input) => {
+      const accountId = Env.get("CLOUDFLARE_ACCOUNT_ID")
+      if (!accountId) return { autoload: false }
+
+      const apiKey = await iife(async () => {
+        const envToken = Env.get("CLOUDFLARE_API_KEY")
+        if (envToken) return envToken
+        const auth = await Auth.get(input.id)
+        if (auth?.type === "api") return auth.key
+        return undefined
+      })
+
+      return {
+        autoload: !!apiKey,
+        options: {
+          apiKey,
+          baseURL: `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1`,
+        },
+        async getModel(sdk: any, modelID: string) {
+          return sdk.languageModel(modelID)
+        },
+      }
+    },
     "cloudflare-ai-gateway": async (input) => {
       const accountId = Env.get("CLOUDFLARE_ACCOUNT_ID")
       const gateway = Env.get("CLOUDFLARE_GATEWAY_ID")
@@ -523,92 +546,6 @@ export namespace Provider {
           headers: {
             "X-Cerebras-3rd-Party-Integration": "opencode",
           },
-        },
-      }
-    },
-    litellm: async (input) => {
-      const config = await Config.get()
-      const providerConfig = config.provider?.["litellm"]
-
-      // Base URL: config > env > default (localhost:4000)
-      const baseURL =
-        providerConfig?.options?.baseURL ?? Env.get("LITELLM_BASE_URL") ?? "http://localhost:4000"
-
-      // API key: auth > config > env (optional for local proxies)
-      const auth = await Auth.get("litellm")
-      const apiKey = await (async () => {
-        if (auth?.type === "api") return auth.key
-        if (providerConfig?.options?.apiKey) return providerConfig.options.apiKey
-        return Env.get("LITELLM_API_KEY")
-      })()
-
-      // Check if server is available (5 second timeout)
-      const isAvailable = await (async () => {
-        try {
-          const controller = new AbortController()
-          const timeout = setTimeout(() => controller.abort(), 5000)
-          const response = await fetch(`${baseURL}/health`, {
-            signal: controller.signal,
-            headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
-          }).catch(() => null)
-          clearTimeout(timeout)
-          return response?.ok ?? false
-        } catch {
-          return false
-        }
-      })()
-
-      // Only autoload if server is available OR explicitly configured
-      if (!isAvailable && !providerConfig) return { autoload: false }
-
-      // Fetch models dynamically if server is available and no models configured
-      if (isAvailable && Object.keys(input.models).length === 0) {
-        try {
-          const response = await fetch(`${baseURL}/v1/models`, {
-            headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
-          })
-          if (response.ok) {
-            const data = (await response.json()) as { data: Array<{ id: string; owned_by?: string }> }
-            for (const model of data.data ?? []) {
-              input.models[model.id] = {
-                id: model.id,
-                providerID: "litellm",
-                name: model.id,
-                api: {
-                  id: model.id,
-                  url: `${baseURL}/v1`,
-                  npm: "@ai-sdk/openai-compatible",
-                },
-                status: "active",
-                headers: {},
-                options: {},
-                cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
-                limit: { context: 128000, output: 16384 },
-                capabilities: {
-                  temperature: true,
-                  reasoning: false,
-                  attachment: false,
-                  toolcall: true,
-                  input: { text: true, audio: false, image: false, video: false, pdf: false },
-                  output: { text: true, audio: false, image: false, video: false, pdf: false },
-                  interleaved: false,
-                },
-                release_date: "",
-                variants: {},
-              }
-            }
-          }
-        } catch {
-          // Silently ignore model discovery failures
-        }
-      }
-
-      return {
-        autoload: isAvailable || !!providerConfig,
-        options: {
-          baseURL: `${baseURL}/v1`,
-          ...(apiKey ? { apiKey } : {}),
-          includeUsage: true,
         },
       }
     },
@@ -818,91 +755,22 @@ export namespace Provider {
       }
     }
 
-    // Add LiteLLM provider for dynamic model discovery
-    // This enables the custom loader to run even if litellm isn't in models.dev
-    if (!database["litellm"]) {
-      database["litellm"] = {
-        id: "litellm",
-        name: "LiteLLM",
-        source: "custom",
-        env: ["LITELLM_API_KEY"],
-        options: {},
-        models: {},
-      }
-    }
-
-    // Add Azure Anthropic provider for Claude models on Azure
-    // Uses Anthropic SDK with Azure OpenAI endpoint (/anthropic/v1)
     if (!database["azure-anthropic"]) {
       const azureAnthropicModels: Record<string, Model> = {
-        "claude-sonnet-4-20250514": {
-          id: "claude-sonnet-4-20250514",
+        "claude-haiku-4-5": {
+          id: "claude-haiku-4-5",
           providerID: "azure-anthropic",
-          name: "Claude Sonnet 4",
+          name: "Claude Haiku 4.5",
           family: "claude-4",
           api: {
-            id: "claude-sonnet-4-20250514",
+            id: "claude-haiku-4-5",
             url: "",
             npm: "@ai-sdk/anthropic",
           },
           status: "active",
           headers: {},
           options: {},
-          cost: { input: 3, output: 15, cache: { read: 0.3, write: 3.75 } },
-          limit: { context: 200000, output: 16384 },
-          capabilities: {
-            temperature: true,
-            reasoning: false,
-            attachment: true,
-            toolcall: true,
-            input: { text: true, audio: false, image: true, video: false, pdf: true },
-            output: { text: true, audio: false, image: false, video: false, pdf: false },
-            interleaved: true,
-          },
-          release_date: "2025-05-14",
-          variants: {},
-        },
-        "claude-3-5-sonnet-20241022": {
-          id: "claude-3-5-sonnet-20241022",
-          providerID: "azure-anthropic",
-          name: "Claude 3.5 Sonnet",
-          family: "claude-3.5",
-          api: {
-            id: "claude-3-5-sonnet-20241022",
-            url: "",
-            npm: "@ai-sdk/anthropic",
-          },
-          status: "active",
-          headers: {},
-          options: {},
-          cost: { input: 3, output: 15, cache: { read: 0.3, write: 3.75 } },
-          limit: { context: 200000, output: 8192 },
-          capabilities: {
-            temperature: true,
-            reasoning: false,
-            attachment: true,
-            toolcall: true,
-            input: { text: true, audio: false, image: true, video: false, pdf: true },
-            output: { text: true, audio: false, image: false, video: false, pdf: false },
-            interleaved: false,
-          },
-          release_date: "2024-10-22",
-          variants: {},
-        },
-        "claude-3-5-haiku-20241022": {
-          id: "claude-3-5-haiku-20241022",
-          providerID: "azure-anthropic",
-          name: "Claude 3.5 Haiku",
-          family: "claude-3.5",
-          api: {
-            id: "claude-3-5-haiku-20241022",
-            url: "",
-            npm: "@ai-sdk/anthropic",
-          },
-          status: "active",
-          headers: {},
-          options: {},
-          cost: { input: 1, output: 5, cache: { read: 0.1, write: 1.25 } },
+          cost: { input: 0.8, output: 4, cache: { read: 0.08, write: 1 } },
           limit: { context: 200000, output: 8192 },
           capabilities: {
             temperature: true,
@@ -913,17 +781,25 @@ export namespace Provider {
             output: { text: true, audio: false, image: false, video: false, pdf: false },
             interleaved: false,
           },
-          release_date: "2024-10-22",
+          release_date: "2025-05-14",
           variants: {},
         },
       }
       database["azure-anthropic"] = {
         id: "azure-anthropic",
-        name: "Azure Anthropic",
+        name: "Azure Anthropic (Nuvai)",
         source: "custom",
         env: ["AZURE_ANTHROPIC_API_KEY"],
         options: {},
         models: azureAnthropicModels,
+      }
+    }
+
+    // Ensure azure-anthropic is always available for discovery, even without auth
+    if (database["azure-anthropic"] && !providers["azure-anthropic"]) {
+      providers["azure-anthropic"] = {
+        ...database["azure-anthropic"],
+        source: "custom",
       }
     }
 
@@ -1168,7 +1044,24 @@ export namespace Provider {
   })
 
   export async function list() {
-    return state().then((state) => state.providers)
+    return state().then((state) => {
+      const providers = { ...state.providers }
+
+      // Prioritize popular providers: Azure Anthropic first, then others by name
+      const priorityOrder = ["azure-anthropic", "opencode", "anthropic", "openai", "github-copilot"]
+      const sorted = Object.fromEntries(
+        Object.entries(providers).sort(([idA], [idB]) => {
+          const indexA = priorityOrder.indexOf(idA)
+          const indexB = priorityOrder.indexOf(idB)
+          if (indexA >= 0 && indexB >= 0) return indexA - indexB
+          if (indexA >= 0) return -1
+          if (indexB >= 0) return 1
+          return providers[idA].name.localeCompare(providers[idB].name)
+        }),
+      )
+
+      return sorted
+    })
   }
 
   async function getSDK(model: Model) {
@@ -1202,12 +1095,6 @@ export namespace Provider {
         // Preserve custom fetch if it exists, wrap it with timeout logic
         const fetchFn = customFetch ?? fetch
         const opts = init ?? {}
-
-        // Merge configured headers into request headers
-        opts.headers = {
-          ...(typeof opts.headers === "object" ? opts.headers : {}),
-          ...options["headers"],
-        }
 
         if (options["timeout"] !== undefined && options["timeout"] !== null) {
           const signals: AbortSignal[] = []
@@ -1385,11 +1272,17 @@ export namespace Provider {
     return undefined
   }
 
-  const priority = ["gpt-5", "claude-sonnet-4", "big-pickle", "gemini-3-pro"]
+  const priority = ["claude-sonnet-4", "gpt-5", "big-pickle", "gemini-3-pro"]
   export function sort(models: Model[]) {
     return sortBy(
       models,
-      [(model) => priority.findIndex((filter) => model.id.includes(filter)), "desc"],
+      [
+        (model) => {
+          const idx = priority.findIndex((filter) => model.id.includes(filter))
+          return idx >= 0 ? idx : priority.length // Prioritized models first, then others
+        },
+        "asc",
+      ],
       [(model) => (model.id.includes("latest") ? 0 : 1), "asc"],
       [(model) => model.id, "desc"],
     )
@@ -1399,10 +1292,16 @@ export namespace Provider {
     const cfg = await Config.get()
     if (cfg.model) return parseModel(cfg.model)
 
-    const provider = await list()
+    const providers = await list()
       .then((val) => Object.values(val))
-      .then((x) => x.find((p) => !cfg.provider || Object.keys(cfg.provider).includes(p.id)))
-    if (!provider) throw new Error("no providers found")
+      .then((x) => x.filter((p) => !cfg.provider || Object.keys(cfg.provider).includes(p.id)))
+
+    if (providers.length === 0) throw new Error("no providers found")
+
+    // Prioritize azure-anthropic as default, then opencode, then others
+    const provider =
+      providers.find((p) => p.id === "azure-anthropic") || providers.find((p) => p.id === "opencode") || providers[0]
+
     const [model] = sort(Object.values(provider.models))
     if (!model) throw new Error("no models found")
     return {
