@@ -18,7 +18,7 @@ mock.module("../../src/bun/index", () => ({
       throw new Error("BunProc.run should not be called in tests")
     },
     which: () => process.execPath,
-    InstallFailedError: class extends Error {},
+    InstallFailedError: class extends Error { },
   },
 }))
 
@@ -47,7 +47,7 @@ test("Azure Anthropic: provider is defined in list", async () => {
   })
   await Instance.provide({
     directory: tmp.path,
-    init: async () => {},
+    init: async () => { },
     fn: async () => {
       const providers = await Provider.list()
       expect(providers["azure-anthropic"]).toBeDefined()
@@ -70,7 +70,7 @@ test("Azure Anthropic: includes all three Claude models", async () => {
   })
   await Instance.provide({
     directory: tmp.path,
-    init: async () => {},
+    init: async () => { },
     fn: async () => {
       const providers = await Provider.list()
       const azureAnthropicProvider = providers["azure-anthropic"]
@@ -79,7 +79,7 @@ test("Azure Anthropic: includes all three Claude models", async () => {
       // Check for Claude Haiku 4.5 model
       const modelIds = Object.keys(azureAnthropicProvider.models)
       expect(modelIds.length).toBe(1)
-      expect(modelIds).toContain("claude-haiku-4-5-20250514")
+      expect(modelIds).toContain("claude-haiku-4-5")
     },
   })
 })
@@ -97,10 +97,10 @@ test("Azure Anthropic: Claude Haiku 4.5 has correct configuration", async () => 
   })
   await Instance.provide({
     directory: tmp.path,
-    init: async () => {},
+    init: async () => { },
     fn: async () => {
       const providers = await Provider.list()
-      const model = providers["azure-anthropic"].models["claude-haiku-4-5-20250514"]
+      const model = providers["azure-anthropic"].models["claude-haiku-4-5"]
       expect(model).toBeDefined()
       expect(model.name).toBe("Claude Haiku 4.5")
       expect(model.family).toBe("claude-4")
@@ -182,7 +182,7 @@ test("Azure Anthropic: has AZURE_ANTHROPIC_API_KEY env requirement", async () =>
   })
   await Instance.provide({
     directory: tmp.path,
-    init: async () => {},
+    init: async () => { },
     fn: async () => {
       const providers = await Provider.list()
       const azureProvider = providers["azure-anthropic"]
@@ -205,7 +205,7 @@ test("Azure Anthropic: includes anthropic-beta headers", async () => {
   })
   await Instance.provide({
     directory: tmp.path,
-    init: async () => {},
+    init: async () => { },
     fn: async () => {
       const providers = await Provider.list()
       const azureProvider = providers["azure-anthropic"]
@@ -233,7 +233,7 @@ test("Azure Anthropic: provider is sorted at top position in list", async () => 
   })
   await Instance.provide({
     directory: tmp.path,
-    init: async () => {},
+    init: async () => { },
     fn: async () => {
       const providers = await Provider.list()
       const providerIds = Object.keys(providers)
@@ -355,7 +355,7 @@ test("Azure Anthropic: models inherit provider ID", async () => {
   })
   await Instance.provide({
     directory: tmp.path,
-    init: async () => {},
+    init: async () => { },
     fn: async () => {
       const providers = await Provider.list()
       const models = Object.values(providers["azure-anthropic"].models)
@@ -379,7 +379,7 @@ test("Azure Anthropic: all models use anthropic npm package", async () => {
   })
   await Instance.provide({
     directory: tmp.path,
-    init: async () => {},
+    init: async () => { },
     fn: async () => {
       const providers = await Provider.list()
       const models = Object.values(providers["azure-anthropic"].models)

@@ -186,7 +186,7 @@ export namespace Provider {
 
       // Get baseURL from config (set by TUI or CLI) or construct from resource name (defaults to nuvai-resource)
       const baseURL =
-        providerConfig?.options?.baseURL ?? `https://${resourceName}.openai.azure.com/anthropic/v1/messages`
+        providerConfig?.options?.baseURL ?? `https://${resourceName}.openai.azure.com/anthropic/v1`
 
       return {
         autoload: false,
@@ -519,7 +519,7 @@ export namespace Provider {
       if (!apiToken) {
         throw new Error(
           "CLOUDFLARE_API_TOKEN (or CF_AIG_TOKEN) is required for Cloudflare AI Gateway. " +
-            "Set it via environment variable or run `opencode auth cloudflare-ai-gateway`.",
+          "Set it via environment variable or run `opencode auth cloudflare-ai-gateway`.",
         )
       }
 
@@ -660,13 +660,13 @@ export namespace Provider {
         },
         experimentalOver200K: model.cost?.context_over_200k
           ? {
-              cache: {
-                read: model.cost.context_over_200k.cache_read ?? 0,
-                write: model.cost.context_over_200k.cache_write ?? 0,
-              },
-              input: model.cost.context_over_200k.input,
-              output: model.cost.context_over_200k.output,
-            }
+            cache: {
+              read: model.cost.context_over_200k.cache_read ?? 0,
+              write: model.cost.context_over_200k.cache_write ?? 0,
+            },
+            input: model.cost.context_over_200k.input,
+            output: model.cost.context_over_200k.output,
+          }
           : undefined,
       },
       limit: {
@@ -757,13 +757,13 @@ export namespace Provider {
 
     if (!database["azure-anthropic"]) {
       const azureAnthropicModels: Record<string, Model> = {
-        "claude-haiku-4-5-20250514": {
-          id: "claude-haiku-4-5-20250514",
+        "claude-haiku-4-5": {
+          id: "claude-haiku-4-5",
           providerID: "azure-anthropic",
           name: "Claude Haiku 4.5",
           family: "claude-4",
           api: {
-            id: "claude-haiku-4-5-20250514",
+            id: "claude-haiku-4-5",
             url: "",
             npm: "@ai-sdk/anthropic",
           },

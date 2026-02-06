@@ -822,10 +822,20 @@ export namespace ProviderTransform {
     }
 
     // Add endpoint info for Azure Anthropic errors
+    // Add endpoint info for Azure Anthropic errors
     if (providerID === "azure-anthropic") {
       const resourceName = process.env.AZURE_ANTHROPIC_RESOURCE_NAME || "nuvai-resource"
       const endpoint = `https://${resourceName}.openai.azure.com/anthropic/v1/messages`
-      message += `\n\nEndpoint: ${endpoint}`
+
+      message += `\n\nTarget Endpoint: ${endpoint}`
+      if (error.statusCode) {
+        message += `\nStatus Code: ${error.statusCode}`
+      }
+      // @ts-ignore
+      if (error.responseBody) {
+        // @ts-ignore
+        message += `\nResponse: ${error.responseBody}`
+      }
     }
 
     return message
