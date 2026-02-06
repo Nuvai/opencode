@@ -27,6 +27,7 @@ import { LspTool } from "./lsp"
 import { Truncate } from "./truncation"
 import { PlanExitTool, PlanEnterTool } from "./plan"
 import { ApplyPatchTool } from "./apply_patch"
+import { fileURLToPath } from "url"
 
 export namespace ToolRegistry {
   const log = Log.create({ service: "tool.registry" })
@@ -39,6 +40,11 @@ export namespace ToolRegistry {
       dirs.flatMap((dir) => [...glob.scanSync({ cwd: dir, absolute: true, followSymlinks: true, dot: true })]),
     )
     if (matches.length) await Config.waitForDependencies()
+
+    // Get the opencode installation directory for proper module resolution
+    const __dirname = path.dirname(fileURLToPath(import.meta.url))
+    const appDir = path.dirname(__dirname)
+
     for (const match of matches) {
       const namespace = path.basename(match, path.extname(match))
       try {
@@ -47,9 +53,14 @@ export namespace ToolRegistry {
           custom.push(fromPlugin(id === "default" ? namespace : `${namespace}_${id}`, def))
         }
       } catch (err) {
-        log.warn("failed to load custom tool", {
+        const msg = err instanceof Error ? err.message : String(err)
+        // Provide helpful hint if it's a module resolution error
+        const hint = msg.includes("Cannot find module")
+          ? " - Make sure dependencies are installed. Run: cd ~/.opencode && bun install"
+          : ""
+        log.warn(`failed to load custom tool${hint}`, {
           path: match,
-          error: err instanceof Error ? err.message : String(err),
+          error: msg,
         })
       }
     }
