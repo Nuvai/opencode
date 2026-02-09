@@ -43,6 +43,10 @@ const allTargets: {
     os: "darwin",
     arch: "arm64",
   },
+  {
+    os: "darwin",
+    arch: "x64",
+  },
 ]
 
 const targets = singleFlag
