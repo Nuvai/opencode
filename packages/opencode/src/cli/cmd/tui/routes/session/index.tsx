@@ -1006,7 +1006,7 @@ export function Session() {
                             onMouseUp={handleUnrevert}
                             marginTop={1}
                             flexShrink={0}
-                            border={["left"]}
+                            border={["top", "bottom", "left", "right"]}
                             customBorderChars={SplitBorder.customBorderChars}
                             borderColor={theme.backgroundPanel}
                           >
@@ -1162,7 +1162,7 @@ function UserMessage(props: {
       <Show when={text()}>
         <box
           id={props.message.id}
-          border={["left"]}
+          border={["top", "bottom", "left", "right"]}
           borderColor={color()}
           customBorderChars={SplitBorder.customBorderChars}
           marginTop={props.index === 0 ? 0 : 1}
@@ -1270,7 +1270,7 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
       </For>
       <Show when={props.message.error && props.message.error.name !== "MessageAbortedError"}>
         <box
-          border={["left"]}
+          border={["top", "bottom", "left", "right"]}
           paddingTop={1}
           paddingBottom={1}
           paddingLeft={2}
@@ -1333,7 +1333,7 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
         paddingLeft={2}
         marginTop={1}
         flexDirection="column"
-        border={["left"]}
+        border={["top", "bottom", "left", "right"]}
         customBorderChars={SplitBorder.customBorderChars}
         borderColor={theme.backgroundElement}
       >
@@ -1588,7 +1588,7 @@ function BlockTool(props: {
   const error = createMemo(() => (props.part?.state.status === "error" ? props.part.state.error : undefined))
   return (
     <box
-      border={["left"]}
+      border={["top", "bottom", "left", "right"]}
       paddingTop={1}
       paddingBottom={1}
       paddingLeft={2}
