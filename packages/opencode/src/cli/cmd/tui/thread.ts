@@ -115,30 +115,13 @@ export const TuiThreadCommand = cmd({
       return piped ? piped + "\n" + args.prompt : args.prompt
     })
 
-    // Check if server should be started (port or hostname explicitly set in CLI or config)
+    // Always start the HTTP server so sidecar tools (visualizer, etc.) can connect.
+    // The TUI still works the same — it just also listens on HTTP for SSE events.
     const networkOpts = await resolveNetworkOptions(args)
-    const shouldStartServer =
-      process.argv.includes("--port") ||
-      process.argv.includes("--hostname") ||
-      process.argv.includes("--mdns") ||
-      networkOpts.mdns ||
-      networkOpts.port !== 0 ||
-      networkOpts.hostname !== "127.0.0.1"
-
-    let url: string
+    const server = await client.call("server", networkOpts)
+    const url = server.url
     let customFetch: typeof fetch | undefined
     let events: EventSource | undefined
-
-    if (shouldStartServer) {
-      // Start HTTP server for external access
-      const server = await client.call("server", networkOpts)
-      url = server.url
-    } else {
-      // Use direct RPC communication (no HTTP)
-      url = "http://opencode.internal"
-      customFetch = createWorkerFetch(client)
-      events = createEventSource(client)
-    }
 
     const tuiPromise = tui({
       url,

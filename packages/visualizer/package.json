@@ -1,0 +1,25 @@
+{
+  "name": "@opencode-ai/visualizer",
+  "version": "0.0.1",
+  "description": "Sidecar event visualizer for OpenCode",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite preview"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@tailwindcss/vite": "catalog:",
+    "@types/node": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-solid": "catalog:"
+  },
+  "dependencies": {
+    "@opencode-ai/sdk": "workspace:*",
+    "solid-js": "catalog:",
+    "tailwindcss": "catalog:",
+    "virtua": "catalog:",
+    "zod": "catalog:"
+  }
+}
