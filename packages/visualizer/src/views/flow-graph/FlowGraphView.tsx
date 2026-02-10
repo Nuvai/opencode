@@ -21,7 +21,7 @@ export function FlowGraphView() {
             <CategoryBadge category={entry().category} />
             <span class="text-xs text-gray-400 font-mono">{formatTimestamp(entry().timestamp)}</span>
             <span class="text-xs text-gray-200">
-              {tl.displayMode() === "educational" ? entry().label : entry().label}
+              {tl.displayMode() === "educational" ? entry().shortLabel : entry().label}
             </span>
             <span class="text-[10px] text-gray-600 ml-auto font-mono">#{entry().sequenceIndex}</span>
           </div>

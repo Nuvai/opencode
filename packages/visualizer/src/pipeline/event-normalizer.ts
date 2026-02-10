@@ -183,7 +183,7 @@ export function normalizeEvent(event: Event, directory: string): TimelineEntry |
               metadata: {
                 toolName,
                 toolInput: state.input,
-                toolOutput: truncate(state.output || "", 200),
+                toolOutput: state.output || "",
                 duration: state.time.end - state.time.start,
               },
             }

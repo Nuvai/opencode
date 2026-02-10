@@ -1,12 +1,36 @@
 import { createMemo } from "solid-js"
 import type { TimelineState } from "./timeline-store"
-import type { TimelineEntry, Actor } from "@/pipeline/actor-model"
+import type { TimelineEntry, Actor, Category } from "@/pipeline/actor-model"
 
-export function createDerivedState(state: TimelineState, sessionFilter: () => string | null) {
+export function createDerivedState(
+  state: TimelineState,
+  sessionFilter: () => string | null,
+  searchQuery: () => string,
+  categoryFilter: () => Category | null,
+  actorFilter: () => Actor | null,
+  toolNameFilter: () => string | null,
+) {
   const filteredEntries = createMemo(() => {
-    const filter = sessionFilter()
-    if (!filter) return state.entries
-    return state.entries.filter((e) => e.sessionID === filter)
+    let entries = state.entries
+    const session = sessionFilter()
+    if (session) entries = entries.filter((e) => e.sessionID === session)
+    const cat = categoryFilter()
+    if (cat) entries = entries.filter((e) => e.category === cat)
+    const actor = actorFilter()
+    if (actor) entries = entries.filter((e) => e.from === actor || e.to === actor)
+    const tool = toolNameFilter()
+    if (tool) entries = entries.filter((e) => e.metadata?.toolName === tool)
+    const q = searchQuery().toLowerCase()
+    if (q) {
+      entries = entries.filter(
+        (e) =>
+          e.label.toLowerCase().includes(q) ||
+          e.shortLabel.toLowerCase().includes(q) ||
+          (e.metadata?.toolName?.toLowerCase().includes(q) ?? false) ||
+          (e.metadata?.error?.toLowerCase().includes(q) ?? false),
+      )
+    }
+    return entries
   })
 
   const visibleEntries = createMemo(() => {

@@ -17,9 +17,10 @@ const ACTOR_LABELS: Record<Actor, string> = {
   tool: "Tools",
 }
 
-export function ActorIcon(props: { actor: Actor; size?: "sm" | "md" | "lg"; active?: boolean }) {
+export function ActorIcon(props: { actor: Actor; size?: "xs" | "sm" | "md" | "lg"; active?: boolean }) {
   const sizeClass = () => {
     switch (props.size || "md") {
+      case "xs": return "w-4 h-4 text-[8px]"
       case "sm": return "w-6 h-6 text-xs"
       case "md": return "w-8 h-8 text-sm"
       case "lg": return "w-12 h-12 text-base"

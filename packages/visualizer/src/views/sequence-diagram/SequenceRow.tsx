@@ -17,7 +17,7 @@ export function SequenceRow(props: { entry: TimelineEntry; isLatest: boolean }) 
       <div
         class="flex items-center cursor-pointer hover:bg-gray-800/40 transition-colors"
         style={{ height: "36px" }}
-        onClick={() => setExpanded(!expanded())}
+        onClick={() => { setExpanded(!expanded()); tl.setSelectedEntry(props.entry) }}
       >
         {/* Timestamp */}
         <div class="w-20 shrink-0 px-2 text-[10px] text-gray-600 font-mono">

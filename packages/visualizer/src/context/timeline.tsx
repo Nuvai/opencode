@@ -11,7 +11,14 @@ const TimelineContext = createContext<TimelineContextValue>()
 export function TimelineProvider(props: ParentProps) {
   const timeline = createTimelineStore()
   const playback = createPlaybackStore()
-  const derived = createDerivedState(timeline.state, playback.sessionFilter)
+  const derived = createDerivedState(
+    timeline.state,
+    playback.sessionFilter,
+    playback.searchQuery,
+    playback.categoryFilter,
+    playback.actorFilter,
+    playback.toolNameFilter,
+  )
 
   const value: TimelineContextValue = {
     ...timeline,

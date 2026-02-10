@@ -1,4 +1,4 @@
-import { Show } from "solid-js"
+import { Show, createSignal } from "solid-js"
 import type { TimelineEntry } from "@/pipeline/actor-model"
 import { CategoryBadge } from "@/components/CategoryBadge"
 import { TokenDisplay } from "@/components/TokenDisplay"
@@ -43,8 +43,11 @@ export function RowDetail(props: { entry: TimelineEntry }) {
             </Show>
             <Show when={meta().toolOutput}>
               <div class="w-full mt-1">
-                <div class="text-gray-600">output:</div>
-                <pre class="text-gray-400 whitespace-pre-wrap break-all max-h-24 overflow-y-auto">{meta().toolOutput}</pre>
+                <div class="flex items-center gap-2 text-gray-600">
+                  <span>output:</span>
+                  <CopyButton text={meta().toolOutput!} />
+                </div>
+                <pre class="text-gray-400 whitespace-pre-wrap break-all max-h-48 overflow-y-auto">{meta().toolOutput}</pre>
               </div>
             </Show>
           </div>
@@ -53,5 +56,26 @@ export function RowDetail(props: { entry: TimelineEntry }) {
 
       <RawEventViewer entry={e()} />
     </div>
+  )
+}
+
+function CopyButton(props: { text: string }) {
+  const [copied, setCopied] = createSignal(false)
+
+  const copy = (ev: MouseEvent) => {
+    ev.stopPropagation()
+    navigator.clipboard.writeText(props.text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+
+  return (
+    <button
+      class="text-[9px] px-1 py-0.5 rounded border border-gray-700 hover:border-gray-600 text-gray-500 hover:text-gray-300 transition-colors"
+      onClick={copy}
+    >
+      {copied() ? "Copied" : "Copy"}
+    </button>
   )
 }

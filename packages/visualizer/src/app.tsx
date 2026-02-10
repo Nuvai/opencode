@@ -1,11 +1,18 @@
-import { Show, createSignal } from "solid-js"
+import { Show, Switch, Match, createSignal } from "solid-js"
 import { ConnectionProvider } from "@/context/connection"
 import { TimelineProvider, useTimeline } from "@/context/timeline"
 import { PlaybackEngine } from "@/context/playback-engine"
 import { ConnectionStatus } from "@/components/ConnectionStatus"
+import { EventDetailPanel } from "@/components/EventDetailPanel"
 import { PlaybackToolbar } from "@/controls/PlaybackToolbar"
+import { KeyboardShortcuts } from "@/controls/KeyboardShortcuts"
+import { SearchFilterBar } from "@/controls/SearchFilterBar"
 import { SequenceDiagramView } from "@/views/sequence-diagram/SequenceDiagramView"
 import { FlowGraphView } from "@/views/flow-graph/FlowGraphView"
+import { TimelineView } from "@/views/timeline/TimelineView"
+import { StatsView } from "@/views/stats/StatsView"
+import { SankeyView } from "@/views/sankey/SankeyView"
+import { ConversationView } from "@/views/conversation/ConversationView"
 import { RecordingsList } from "@/views/recordings/RecordingsList"
 
 function MainView() {
@@ -29,14 +36,30 @@ function MainView() {
         <ConnectionStatus />
       </header>
 
+      <SearchFilterBar />
+
       {/* Main content */}
       <div class="flex-1 min-h-0 overflow-hidden">
-        <Show when={tl.activeView() === "sequence"}>
-          <SequenceDiagramView />
-        </Show>
-        <Show when={tl.activeView() === "flow"}>
-          <FlowGraphView />
-        </Show>
+        <Switch>
+          <Match when={tl.activeView() === "sequence"}>
+            <SequenceDiagramView />
+          </Match>
+          <Match when={tl.activeView() === "flow"}>
+            <FlowGraphView />
+          </Match>
+          <Match when={tl.activeView() === "timeline"}>
+            <TimelineView />
+          </Match>
+          <Match when={tl.activeView() === "stats"}>
+            <StatsView />
+          </Match>
+          <Match when={tl.activeView() === "sankey"}>
+            <SankeyView />
+          </Match>
+          <Match when={tl.activeView() === "conversation"}>
+            <ConversationView />
+          </Match>
+        </Switch>
       </div>
 
       {/* Playback controls */}
@@ -46,6 +69,9 @@ function MainView() {
       <Show when={showRecordings()}>
         <RecordingsList onClose={() => setShowRecordings(false)} />
       </Show>
+
+      <EventDetailPanel />
+      <KeyboardShortcuts />
 
       {/* Playback engine (invisible, just runs effects) */}
       <PlaybackEngine />
